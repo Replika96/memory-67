@@ -680,11 +680,11 @@ function checkFormat(d){
   if(!d || typeof d !== 'object') throw new Error('это не JSON-объект');
   if(d.format !== FORMAT) throw new Error(d.format === 'sm2-v2' ? 'это progress.json от английских карточек' : 'это не progress.json Android-колоды');
 }
-function refreshAll(){
+function refreshAll({preserveCard = false} = {}){
   renderStats();
   if(!document.getElementById('tab-list').classList.contains('hidden')) renderList();
   if(!document.getElementById('tab-topics').classList.contains('hidden')) renderTopics();
-  if(!flipped) next(); else renderStudy();
+  if(current && (preserveCard || flipped)) renderStudy(); else next();
 }
 
 document.getElementById('exportBtn').onclick = () => {

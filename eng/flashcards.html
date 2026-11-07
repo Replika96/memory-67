@@ -554,10 +554,10 @@ function checkFormat(d){
   if(d?.format !== 'sm2-v2' || !d.progress || typeof d.progress !== 'object')
     throw new Error('Выбери файл прогресса английской колоды');
 }
-function refreshAll(){
+function refreshAll({preserveCard = false} = {}){
   renderStats();
   renderList();
-  if(flipped) renderStudy(); else next();
+  if(current && (preserveCard || flipped)) renderStudy(); else next();
 }
 </script>
 <script src="../autosave.js"></script>

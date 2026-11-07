@@ -90,7 +90,7 @@ async function syncWithFile(){
     }
     fileState = 'ok'; dirty = true;
     await flushWrite();
-    renderFileUi(); refreshAll();
+    renderFileUi(); refreshAll({preserveCard:true});
   }catch(e){
     setFileState('error', e.name === 'NotFoundError' ? 'файл не найден (переместили или удалили?)' : (e.message || String(e)));
   }

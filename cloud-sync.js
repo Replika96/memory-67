@@ -90,11 +90,10 @@
           const today = dayKey(Date.now());
           settings.newDay = {date:today,count:stats[today]?.new || 0};
           before = capture();
-          if (current && Object.hasOwn(result.cards,current.id)) flipped = false;
           undoStack = [];
           saveLocal();
           scheduleWrite();
-          refreshAll();
+          refreshAll({preserveCard:true});
         }
         if (!readQueue().length && !snapshot.metadata.hasPendingWrites) report('Синхронизировано', 'Синхронизировано · '+user.email);
       }, e => { report('Ошибка чтения из облака', 'Ошибка чтения облака. '+e.code); });
