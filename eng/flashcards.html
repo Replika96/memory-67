@@ -96,6 +96,10 @@
       Направление: <select id="dirSel"><option value="en">EN → RU</option><option value="ru">RU → EN</option></select>
       Новых в день: <input type="number" id="newLimit" min="0" max="100" style="width:64px">
     </div>
+    <div class="study-tools">
+      <span id="studySync" role="status">Проверяем синхронизацию…</span>
+      <button type="button" class="link" id="studyLogin" hidden>Войти для синхронизации</button>
+    </div>
     <div id="studyArea"></div>
   </section>
 
@@ -533,6 +537,7 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
 });
 
 document.addEventListener('keydown', e => {
+  if (e.target.closest?.('.study-tools, #finishMistakes')) return;
   if(document.getElementById('tab-study').classList.contains('hidden') || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
   const k = e.key.toLowerCase();
   if(e.code === 'Space' || e.key === 'Enter'){ e.preventDefault(); if(!flipped) flip(); else answer(3); }

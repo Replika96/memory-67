@@ -155,6 +155,11 @@
       Раздел: <select id="secSel"></select>
       Новых в день: <input type="number" id="newLimit" min="0" max="100" style="width:64px">
     </div>
+    <div class="study-tools">
+      <button type="button" class="btn" id="mistakesBtn">Повторить ошибки</button>
+      <span id="studySync" role="status">Проверяем синхронизацию…</span>
+      <button type="button" class="link" id="studyLogin" hidden>Войти для синхронизации</button>
+    </div>
     <div id="studyArea"></div>
   </section>
 
@@ -357,7 +362,17 @@ function toggleAllPts(){
   renderStudy();
 }
 
+let mistakeSession = null;
+const mistakesBtn = document.getElementById('mistakesBtn');
+function hasMisses(c){
+  return progress[c.id]?.missed?.some(i => Number.isInteger(i) && i >= 0 && i < (c.pts?.length || 0));
+}
+mistakesBtn.onclick = () => {
+  mistakeSession = mistakeSession ? null : deck.filter(c => inFilter(c) && hasMisses(c));
+  next();
+};
 function pickNext(){
+  if(mistakeSession) return mistakeSession.find(hasMisses) || null;
   const q = queues();
   const notLast = arr => arr.find(c => c.id !== lastId);
   if(q.lrnNow.length){
@@ -397,7 +412,8 @@ function answer(rating){
   st.reviews++; if(rating === 1) st.again++; if(wasNew) st.new++;
   const hit = pts.length ? checked.size : 0, tot = pts.length;
   if(tot){ st.ptsHit = (st.ptsHit || 0) + hit; st.ptsTotal = (st.ptsTotal || 0) + tot; }
-  undoStack.push({ id, before, wasNew, dk, rating, hit, tot });
+  undoStack.push({ id, before, wasNew, dk, rating, hit, tot, mistakeSession });
+  if(mistakeSession) mistakeSession.splice(mistakeSession.indexOf(current), 1);
   if(undoStack.length > 30) undoStack.shift();
   lastId = id; sessionDone++;
   save(); renderStats(); next(); window.scrollTo({ top: 0 });
@@ -411,7 +427,9 @@ function markKnown(id){
   lastId = id; save(); renderStats();
 }
 function undo(){
-  const u = undoStack.pop(); if(!u) return;
+  const u = undoStack.at(-1); if(!u || (mistakeSession && u.mistakeSession !== mistakeSession)) return;
+  undoStack.pop();
+  if(mistakeSession) mistakeSession.unshift(byId[u.id]);
   if(u.before) progress[u.id] = u.before; else delete progress[u.id];
   if(u.dk){
     const st = stats[u.dk];
@@ -462,7 +480,7 @@ function checklistHtml(c){
   return `<div class="check">
     <div class="check-h"><b>Что ты назвал?</b><span>клик или ${PT_KEYS.slice(0, pts.length).join(' ')} · A — все</span></div>
     ${pts.map((p, i) => `<div class="pt ${checked.has(i) ? 'on' : ''}" data-pt="${i}">
-        <span class="box">${checked.has(i) ? '✓' : ''}</span><span class="txt">${inline(p)}</span><span class="k">${PT_KEYS[i] || ''}</span></div>`).join('')}
+        <span class="box">${checked.has(i) ? '✓' : ''}</span><span class="txt">${inline(p)}${mistakeSession && progress[c.id]?.missed?.includes(i) ? '<small class="previous-miss">Пропущено в прошлый раз</small>' : ''}</span><span class="k">${PT_KEYS[i] || ''}</span></div>`).join('')}
     <div class="verdict">Назвал ${checked.size} из ${pts.length} → <b>${LABELS[sug - 1]}</b> (Пробел)</div>
   </div>`;
 }
@@ -525,7 +543,19 @@ function renderStudy(){
   const area = document.getElementById('studyArea');
   const q = queues();
   const cur = current ? (statusOf(current.id) === 'new' ? 'n' : isLrn(progress[current.id]) ? 'l' : 'r') : '';
-  const counts = `<div class="counts">
+  const remaining = (mistakeSession || deck.filter(inFilter)).filter(hasMisses).length;
+  mistakesBtn.disabled = !mistakeSession && remaining === 0;
+  mistakesBtn.textContent = mistakeSession ? 'Выйти из повторения ошибок' : `Повторить ошибки · ${remaining}`;
+  const canUndo = !!undoStack.length && (!mistakeSession || undoStack.at(-1).mistakeSession === mistakeSession);
+  if(mistakeSession && !current){
+    area.innerHTML = `<div class="card done"><div class="q">Повторение ошибок завершено</div>
+      <div class="row"><button class="btn" id="finishMistakes">К обычному занятию</button>
+      ${canUndo ? '<button class="link" id="undoBtn">Отменить последний ответ</button>' : ''}</div></div>`;
+    document.getElementById('finishMistakes').onclick = mistakesBtn.onclick;
+    const back = document.getElementById('undoBtn'); if(back) back.onclick = undo;
+    return;
+  }
+  const counts = mistakeSession ? `<div class="counts">Осталось карточек: ${remaining}</div>` : `<div class="counts">
       <span style="color:var(--c-new)" class="${cur==='n'?'cur':''}" title="новые">${q.fresh.length}</span>
       <span style="color:var(--c-lrn)" class="${cur==='l'?'cur':''}" title="на изучении">${q.lrnAhead.length}</span>
       <span style="color:var(--c-rev)" class="${cur==='r'?'cur':''}" title="к повторению">${q.rev.length}</span></div>`;
@@ -560,9 +590,9 @@ function renderStudy(){
     </div>
     ${buttons}
     <div class="sub">
-      <button class="link" id="undoBtn" ${undoStack.length ? '' : 'disabled'}>↶ Отменить (Z)</button>
+      <button class="link" id="undoBtn" ${canUndo ? '' : 'disabled'}>↶ Отменить (Z)</button>
       <span>${flipped && hasPts ? 'Q–T тезисы · Пробел — рекомендованная · 1–4' : 'Пробел · 1–4'}</span>
-      <button class="link" id="knownBtn">Уже знаю →</button>
+      <button class="link" id="knownBtn" ${mistakeSession ? 'hidden' : ''}>Уже знаю →</button>
     </div>`;
   document.getElementById('card').onclick = () => { if(!flipped) flip(); };
   area.querySelectorAll('[data-pt]').forEach(el => el.onclick = () => togglePt(Number(el.dataset.pt)));
@@ -586,7 +616,7 @@ function renderTopics(){
       <div class="chips">${t.sections.map(s => `<span class="chip ${secsWithCards.has(s) ? 'has' : ''}">${esc(s)}${secsWithCards.has(s) ? ` · ${cards.filter(x => x.sec === s).length}` : ''}</span>`).join('')}</div></div>`;
   }).join('');
   document.querySelectorAll('[data-study]').forEach(b => b.onclick = () => {
-    settings.topic = b.dataset.study; settings.sec = 'all'; save(); syncFilters(); renderStats(); next(); switchTab('study');
+    mistakeSession = null; settings.topic = b.dataset.study; settings.sec = 'all'; save(); syncFilters(); renderStats(); next(); switchTab('study');
   });
 }
 
@@ -705,7 +735,7 @@ function switchTab(tab){
   if(tab === 'study') renderStudy();
 }
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => switchTab(b.dataset.tab));
-const onFilter = () => { save(); syncFilters(); renderStats(); next(); if(!document.getElementById('tab-list').classList.contains('hidden')) renderList(); };
+const onFilter = () => { mistakeSession = null; save(); syncFilters(); renderStats(); next(); if(!document.getElementById('tab-list').classList.contains('hidden')) renderList(); };
 document.getElementById('topicSel').onchange = e => { settings.topic = e.target.value; settings.sec = 'all'; onFilter(); };
 document.getElementById('secSel').onchange = e => { settings.sec = e.target.value; onFilter(); };
 document.getElementById('newLimit').value = settings.newLimit;
@@ -714,6 +744,7 @@ document.getElementById('search').oninput = renderList;
 document.getElementById('statusFilter').onchange = renderList;
 
 document.addEventListener('keydown', e => {
+  if (e.target.closest?.('.study-tools, #finishMistakes')) return;
   if(document.getElementById('tab-study').classList.contains('hidden') || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
   if(e.ctrlKey || e.metaKey || e.altKey) return;
   const k = e.key.toLowerCase(), pi = PT_CODES.indexOf(e.code);

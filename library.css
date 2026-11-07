@@ -57,3 +57,6 @@
   #tab-list { overflow-x: auto; }
   .card pre { max-width: 100%; overflow-x: auto; }
 }
+.study-tools { display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; margin:0 0 12px; font-size:13px; color:var(--muted); }
+.study-tools [hidden] { display:none; }
+.previous-miss { display:block; margin-top:3px; color:var(--muted); font-size:12px; }
