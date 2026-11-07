@@ -1,0 +1,8 @@
+{
+  "hosting": {
+    "public": "public",
+    "predeploy": ["powershell -NoProfile -ExecutionPolicy Bypass -File prepare-hosting.ps1"],
+    "headers": [{"source":"/sw.js","headers":[{"key":"Cache-Control","value":"no-cache"}]}]
+  },
+  "firestore": {"rules":"firestore.rules"}
+}

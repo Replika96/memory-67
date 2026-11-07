@@ -1,0 +1,26 @@
+# Only the published app and its deployment configuration belong in Git.
+/*
+!/.gitignore
+!/.github/
+!/.firebaserc
+!/firebase.json
+!/firestore.rules
+!/prepare-hosting.ps1
+!/app.webmanifest
+!/index.html
+!/library.css
+!/autosave.js
+!/cloud-sync.js
+!/sync-state.js
+!/register.js
+!/sw.js
+!/icon-192.png
+!/icon-512.png
+!/eng/
+!/android/
+/eng/*
+/android/*
+!/eng/cards.js
+!/eng/flashcards.html
+!/android/cards.js
+!/android/flashcards.html
