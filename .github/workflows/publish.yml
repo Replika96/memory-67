@@ -10,19 +10,28 @@ permissions:
 
 concurrency:
   group: memory-67-hosting
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   publish:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: firebase-cli-15.35.0-linux-v1
       - uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: projects/411496341991/locations/global/workloadIdentityPools/flashcards/providers/github
           service_account: flashcards-hosting@memory-67.iam.gserviceaccount.com
+      - name: Prepare site assets
+        shell: pwsh
+        run: ./prepare-hosting.ps1
+      - name: Prepare Hosting configuration
+        run: node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync('firebase.json'));delete c.hosting.predeploy;fs.writeFileSync('firebase.json',JSON.stringify(c))"
       - name: Publish to Firebase Hosting
-        run: npx --yes firebase-tools@15.35.0 deploy --only hosting --project memory-67 --non-interactive
+        run: npx --yes --prefer-offline firebase-tools@15.35.0 deploy --only hosting --project memory-67 --non-interactive
