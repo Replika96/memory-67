@@ -24,3 +24,8 @@
 !/eng/flashcards.html
 !/android/cards.js
 !/android/flashcards.html
+
+!/finance/
+/finance/*
+!/finance/cards.js
+!/finance/flashcards.html
