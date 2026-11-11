@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Лексика · урок 5</title>
+<style>
+  :root{--bg:#f6f4ef;--card:#fff;--ink:#1d1d1f;--muted:#6b6b70;--line:#e3e0d8;--accent:#2f5d50;
+        --again:#b4442f;--hard:#7d7468;--good:#2f7a4f;--easy:#2d63a8;
+        --c-new:#2d63a8;--c-lrn:#b4442f;--c-rev:#2f7a4f;--c-young:#c58b1b;--c-mature:#2f7a4f;--c-gray:#8a8a90}
+  @media (prefers-color-scheme:dark){:root{--bg:#17181a;--card:#222326;--ink:#ececee;--muted:#9a9aa0;--line:#33343a;--accent:#7fbfa9;--c-new:#6b9be0;--easy:#3f78c4}}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+  header{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  h1{font-size:18px;margin:0;font-weight:650}
+  h3{margin:22px 0 8px}
+  nav{display:flex;gap:6px}
+  nav button,.btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 14px;border-radius:8px;cursor:pointer}
+  nav button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  main{max-width:760px;margin:0 auto;padding:20px}
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:10px}
+  @media (max-width:560px){.stats{grid-template-columns:repeat(3,1fr)}}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .stat b{display:block;font-size:22px}
+  .stat span{font-size:12px;color:var(--muted)}
+  .bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin:0 0 6px;display:flex}
+  .bar i{display:block;height:100%}
+  .today{font-size:13px;color:var(--muted);margin-bottom:18px}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px;font-size:14px;color:var(--muted)}
+  select,input[type=number],input[type=search]{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+  .counts{display:flex;justify-content:center;gap:14px;font-weight:650;margin-bottom:10px;font-variant-numeric:tabular-nums}
+  .counts span.cur{text-decoration:underline;text-underline-offset:4px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;min-height:300px;padding:34px 30px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:pointer;user-select:none;position:relative}
+  .card .word{font-size:38px;font-weight:650;letter-spacing:-.01em}
+  .card .tr{color:var(--muted);margin-top:6px}
+  .card .ans{margin-top:22px;border-top:1px solid var(--line);padding-top:18px;width:100%}
+  .card .ru{font-size:24px;font-weight:550}
+  .card .ex{margin-top:14px;font-style:italic}
+  .card .exru{color:var(--muted);font-size:14px;margin-top:4px}
+  .card .note{margin-top:14px;font-size:13px;background:var(--bg);border-radius:8px;padding:8px 10px;display:inline-block}
+  .card .tag{position:absolute;top:12px;left:14px;font-size:12px;color:var(--muted)}
+  .speak{position:absolute;top:10px;right:12px;border:none;background:none;font-size:20px;cursor:pointer;color:var(--muted)}
+  .actions{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
+  .actions.single{grid-template-columns:1fr}
+  .actions button{font:inherit;font-weight:600;padding:10px 6px 12px;border-radius:10px;border:none;cursor:pointer;color:#fff;display:flex;flex-direction:column;align-items:center;gap:2px}
+  .actions button small{font-weight:500;opacity:.85;font-size:12px}
+  .r1{background:var(--again)}.r2{background:var(--hard)}.r3{background:var(--good)}.r4{background:var(--easy)}
+  .show{background:var(--accent);padding:14px!important}
+  .sub{display:flex;justify-content:space-between;margin-top:10px;font-size:12px;color:var(--muted)}
+  .link{background:none;border:none;color:var(--accent);cursor:pointer;font:inherit;font-size:13px;padding:0}
+  .link:disabled{color:var(--muted);cursor:default}
+  .done{cursor:default}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  td,th{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{color:var(--muted);font-weight:500}
+  .pill{font-size:12px;padding:2px 8px;border-radius:99px;color:#fff;white-space:nowrap}
+  .p-new{background:var(--c-gray)}.p-learning{background:var(--c-lrn)}.p-young{background:var(--c-young)}.p-mature{background:var(--c-mature)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+  .hidden{display:none}
+  p.small,li{font-size:13px;color:var(--muted);line-height:1.5}
+  .muted{color:var(--muted);font-size:12px}
+</style>
+<link rel="stylesheet" href="../library.css">
+<meta name="theme-color" content="#203e34">
+<link rel="manifest" href="../app.webmanifest">
+<link rel="apple-touch-icon" href="../icon-192.png">
+<script defer src="../register.js"></script>
+</head>
+<body>
+<div class="library-bar">
+  <a class="library-name" href="../index.html">Мои карточки</a>
+  <nav class="deck-switch" aria-label="Выбор колоды">
+    <a href="../eng/flashcards.html">Английский</a>
+    <a href="../android/flashcards.html">Android</a>
+    <a href="../finance/flashcards.html">Оценка бизнеса</a>
+    <a href="../lesson5/flashcards.html" aria-current="page">Лексика · урок 5</a>
+  </nav>
+</div>
+<header>
+  <h1>Лексика · урок 5</h1>
+  <button class="filechip hidden" id="fileBtn"></button>
+  <nav aria-label="Разделы колоды">
+    <button data-tab="study" class="active">Учить</button>
+    <button data-tab="list">Список слов</button>
+    <button data-tab="settings">Прогресс</button>
+  </nav>
+</header>
+
+<main>
+  <div class="stats" id="stats"></div>
+  <div class="bar" id="bar"></div>
+  <div class="today" id="today"></div>
+
+  <!-- STUDY -->
+  <section id="tab-study">
+    <div class="controls">
+      Партия: <select id="batchSel"></select>
+      Направление: <select id="dirSel"><option value="en">EN → RU</option><option value="ru">RU → EN</option></select>
+      Новых в день: <input type="number" id="newLimit" min="0" max="100" style="width:64px">
+    </div>
+    <div class="study-tools">
+      <span id="studySync" role="status">Проверяем синхронизацию…</span>
+      <button type="button" class="link" id="studyLogin" hidden>Войти для синхронизации</button>
+    </div>
+    <div id="studyArea"></div>
+  </section>
+
+  <!-- LIST -->
+  <section id="tab-list" class="hidden">
+    <div class="controls">
+      <input type="search" id="search" placeholder="Поиск…">
+      <select id="statusFilter">
+        <option value="">Все</option><option value="new">Новые</option><option value="learning">Учу</option>
+        <option value="young">Повторяю</option><option value="mature">Изучено</option>
+      </select>
+    </div>
+    <table><thead><tr><th>Слово</th><th>Перевод</th><th>Статус</th><th>Интервал · ease</th><th>Повтор</th><th></th></tr></thead><tbody id="listBody"></tbody></table>
+  </section>
+
+  <!-- SETTINGS / PROGRESS -->
+  <section id="tab-settings" class="hidden">
+    <h3>Синхронизация с телефоном</h3>
+    <p class="small" id="cloudStatus" role="status">Подключение к облаку…</p>
+    <button class="btn" id="cloudLogin" hidden>Войти через Google</button>
+    <h3>Автосохранение в файл</h3>
+    <div id="fileSection">
+      <p class="small" id="fileInfo"></p>
+      <div class="row">
+        <button class="btn" id="fileNewBtn">Выбрать / создать progress.json…</button>
+        <button class="btn" id="fileOpenBtn">Подключить существующий…</button>
+        <button class="btn hidden" id="fileOffBtn">Отключить</button>
+      </div>
+    </div>
+
+    <h3>Вручную</h3>
+    <p class="small" id="ioMsg">Прогресс всегда хранится и в браузере. Экспорт/импорт — запасной вариант (или для браузеров без автосохранения).</p>
+    <div class="row">
+      <button class="btn" id="exportBtn">Экспорт progress.json</button>
+      <label class="btn">Импорт progress.json<input type="file" id="importInput" accept=".json" hidden></label>
+      <button class="btn" id="resetBtn" style="color:var(--again)">Сбросить весь прогресс</button>
+    </div>
+
+    <h3>Как это работает (как в Anki, алгоритм SM-2)</h3>
+    <ul>
+      <li><b>Новая карточка</b> проходит шаги изучения: <b>1 мин → 10 мин</b>, после чего «выпускается» на интервал <b>1 день</b>. «Легко» сразу выпускает на <b>4 дня</b>.</li>
+      <li><b>Повторение:</b> «Хорошо» умножает интервал на ease карточки (старт 250%), «Трудно» — на 1.2 и снижает ease на 15%, «Легко» — на ease × 1.3 и повышает ease на 15%. Если повторяешь с опозданием и всё равно вспомнил — часть опоздания засчитывается в интервал.</li>
+      <li><b>«Снова» на повторении</b> — это провал (lapse): ease −20% (не ниже 130%), интервал сбрасывается до 1 дня, карточка уходит на переучивание через 10 мин.</li>
+      <li>Интервалы немного случайно «размазываются» (±5%), чтобы карточки не приходили пачками. День начинается в 4:00, как в Anki.</li>
+      <li><b>Статусы:</b> Новое → Учу (шаги в минутах) → Повторяю (интервал &lt; 21 дня) → <b>Изучено</b> (интервал ≥ 21 дня, в Anki это «mature»).</li>
+      <li>«Уже знаю» — для слов, которые ты точно знаешь: карточка сразу уходит на 60 дней и не тратит лимит новых.</li>
+      <li>Клавиши: Пробел — показать ответ / «Хорошо», 1–4 — оценки, Z — отменить последний ответ, S — озвучить.</li>
+    </ul>
+  </section>
+</main>
+
+<script src="cards.js"></script>
+<script>
+// ================== параметры (как дефолты Anki) ==================
+const CFG = {
+  learnSteps: [1, 10],      // минуты
+  relearnSteps: [10],       // минуты
+  graduatingIvl: 1,         // дни
+  easyIvl: 4,               // дни
+  startEase: 2.5, minEase: 1.3,
+  easyBonus: 1.3, hardMult: 1.2,
+  lapseMult: 0, minLapseIvl: 1,
+  maxIvl: 36500,
+  learnAheadMin: 20,
+  matureIvl: 21,
+  knownIvl: 60,
+  rolloverHour: 4,
+};
+const MIN = 60000, HOUR = 3600000, DAY = 86400000;
+const KEY_V1 = 'lesson5-flashcards-progress-v1';
+const KEY = 'lesson5-flashcards-progress-v2';
+const SETTINGS_KEY = 'lesson5-flashcards-settings-v1';
+const STATS_KEY = 'lesson5-flashcards-stats-v1';
+const deck = (window.DECK || []).slice().sort((a,b) => a.id - b.id);
+const byId = Object.fromEntries(deck.map(c => [c.id, c]));
+
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); }catch(e){ return d } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)) }catch(e){} }
+};
+
+// ================== время ==================
+const startOfDay = ts => { const d = new Date(ts - CFG.rolloverHour*HOUR); d.setHours(0,0,0,0); return d.getTime() + CFG.rolloverHour*HOUR; };
+const dayKey = ts => { const d = new Date(startOfDay(ts)); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+
+// ================== миграция со старой версии (коробки Лейтнера) ==================
+function migrate(old){
+  const out = {};
+  for(const [id, p] of Object.entries(old || {})){
+    if(!p) continue;
+    if(p.state){ out[id] = p; continue; }           // уже новый формат
+    if(!p.seen) continue;
+    const base = { ease: CFG.startEase, reps: p.seen, lapses: 0, step: 0, last: p.last || Date.now() };
+    if(!p.box) out[id] = { ...base, state: 'learning', ivl: 0, due: Date.now() };
+    else {
+      const ivl = p.box >= 5 ? 30 : [0,1,2,4,8][p.box];
+      out[id] = { ...base, state: 'review', ivl, due: p.due || startOfDay(Date.now()) + ivl*DAY };
+    }
+  }
+  return out;
+}
+
+let progress = store.get(KEY, null);
+if(!progress){ progress = migrate(store.get(KEY_V1, {})); store.set(KEY, progress); }
+let settings = Object.assign({ batch:'all', dir:'en', newLimit:10, newDay:{date:'', count:0} }, store.get(SETTINGS_KEY, {}));
+let stats = store.get(STATS_KEY, {});   // 'YYYY-MM-DD' -> {reviews, again, new}
+const saveLocal = () => { store.set(KEY, progress); store.set(SETTINGS_KEY, settings); store.set(STATS_KEY, stats); window.dispatchEvent(new Event('progress-saved')); };
+const save = () => { saveLocal(); scheduleWrite(); };
+
+// ================== планировщик SM-2 (Anki) ==================
+function fuzzIvl(i){
+  if(i < 2.5) return i;
+  const r = Math.max(1, Math.round(i * 0.05));
+  return i + Math.floor(Math.random() * (2*r + 1)) - r;
+}
+
+// Возвращает новое состояние карточки после оценки rating (1 снова, 2 трудно, 3 хорошо, 4 легко)
+function schedule(prev, rating, now, fuzz){
+  const s = prev ? { ...prev } : { state:'new', step:0, ease:CFG.startEase, ivl:0, due:0, reps:0, lapses:0 };
+  const today = startOfDay(now);
+  s.reps = (s.reps || 0) + 1; s.last = now;
+  const toReview = ivl => {
+    ivl = Math.min(CFG.maxIvl, Math.max(1, Math.round(fuzz ? fuzzIvl(ivl) : ivl)));
+    Object.assign(s, { state:'review', step:0, ivl, due: today + ivl*DAY });
+  };
+  if(s.state === 'new') { s.state = 'learning'; s.step = 0; }
+
+  if(s.state === 'learning' || s.state === 'relearning'){
+    const relearn = s.state === 'relearning';
+    const steps = relearn ? CFG.relearnSteps : CFG.learnSteps;
+    s.step = Math.min(s.step || 0, steps.length - 1);
+    if(rating === 1){ s.step = 0; s.due = now + steps[0]*MIN; }
+    else if(rating === 2){
+      const m = s.step === 0 ? (steps.length > 1 ? (steps[0] + steps[1]) / 2 : Math.min(steps[0]*1.5, steps[0] + 1440)) : steps[s.step];
+      s.due = now + m*MIN;
+    }
+    else if(rating === 3){
+      if(s.step + 1 >= steps.length) toReview(relearn ? Math.max(CFG.minLapseIvl, s.ivl) : CFG.graduatingIvl);
+      else { s.step++; s.due = now + steps[s.step]*MIN; }
+    }
+    else toReview(relearn ? Math.max(CFG.minLapseIvl, s.ivl) + 1 : CFG.easyIvl);
+    return s;
+  }
+
+  // review
+  if(rating === 1){
+    s.lapses = (s.lapses || 0) + 1;
+    s.ease = Math.max(CFG.minEase, s.ease - 0.2);
+    s.ivl = Math.max(CFG.minLapseIvl, Math.round(s.ivl * CFG.lapseMult));
+    Object.assign(s, { state:'relearning', step:0, due: now + CFG.relearnSteps[0]*MIN });
+    return s;
+  }
+  const late = Math.max(0, Math.round((today - s.due) / DAY));
+  const hard = Math.max(s.ivl + 1, s.ivl * CFG.hardMult);
+  const good = Math.max(hard + 1, (s.ivl + late/2) * s.ease);
+  const easy = Math.max(good + 1, (s.ivl + late) * s.ease * CFG.easyBonus);
+  if(rating === 2){ s.ease = Math.max(CFG.minEase, s.ease - 0.15); toReview(hard); }
+  else if(rating === 3) toReview(good);
+  else { s.ease = s.ease + 0.15; toReview(easy); }
+  return s;
+}
+
+// ================== статусы и очередь ==================
+const isLrn = p => p && (p.state === 'learning' || p.state === 'relearning');
+function statusOf(id){
+  const p = progress[id];
+  if(!p || p.state === 'new') return 'new';
+  if(isLrn(p)) return 'learning';
+  return p.ivl >= CFG.matureIvl ? 'mature' : 'young';
+}
+const statusRu = { new:'Новое', learning:'Учу', young:'Повторяю', mature:'Изучено' };
+const inBatch = c => settings.batch === 'all' || String(c.batch) === String(settings.batch);
+function newDoneToday(){ return settings.newDay.date === dayKey(Date.now()) ? settings.newDay.count : 0; }
+function newLeft(){ return Math.max(0, (Number(settings.newLimit) || 0) - newDoneToday()); }
+
+function queues(now = Date.now()){
+  const cards = deck.filter(inBatch);
+  const lrnAll = cards.filter(c => isLrn(progress[c.id])).sort((a,b) => progress[a.id].due - progress[b.id].due);
+  const lrnNow = lrnAll.filter(c => progress[c.id].due <= now);
+  const lrnAhead = lrnAll.filter(c => progress[c.id].due <= now + CFG.learnAheadMin*MIN);
+  const rev = cards.filter(c => { const s = statusOf(c.id); return (s === 'young' || s === 'mature') && progress[c.id].due <= now; });
+  const fresh = cards.filter(c => statusOf(c.id) === 'new').slice(0, newLeft());
+  return { lrnAll, lrnNow, lrnAhead, rev, fresh };
+}
+
+let current = null, flipped = false, lastId = null, undoStack = [], sessionDone = 0;
+
+function pickNext(){
+  const q = queues();
+  const notLast = arr => arr.find(c => c.id !== lastId);
+  // 1) карточки на шагах изучения, срок которых наступил
+  if(q.lrnNow.length){
+    const c = q.lrnNow[0];
+    if(c.id !== lastId || (!q.rev.length && !q.fresh.length)) return c;
+    const alt = notLast(q.lrnNow); if(alt) return alt;
+  }
+  // 2) повторения и новые вперемешку
+  const nRev = q.rev.length, nNew = q.fresh.length;
+  if(nRev || nNew){
+    const takeNew = nNew && (!nRev || Math.random() < nNew / (nNew + nRev));
+    if(takeNew) return notLast(q.fresh) || q.fresh[0];
+    const pool = q.rev.filter(c => c.id !== lastId);
+    const src = pool.length ? pool : q.rev;
+    return src[Math.floor(Math.random() * src.length)];
+  }
+  // 3) если больше ничего нет — учим наперёд (до 20 мин)
+  if(q.lrnAhead.length) return q.lrnAhead[0];
+  return null;
+}
+
+function next(){ current = pickNext(); flipped = false; renderStudy(); }
+
+function answer(rating){
+  if(!current || !flipped) return;
+  const id = current.id, now = Date.now(), before = progress[id] ? { ...progress[id] } : undefined;
+  const wasNew = statusOf(id) === 'new';
+  progress[id] = schedule(before, rating, now, true);
+  const dk = dayKey(now);
+  if(wasNew){
+    if(settings.newDay.date !== dk) settings.newDay = { date: dk, count: 0 };
+    settings.newDay.count++;
+  }
+  const st = stats[dk] || (stats[dk] = { reviews:0, again:0, new:0 });
+  st.reviews++; if(rating === 1) st.again++; if(wasNew) st.new++;
+  undoStack.push({ id, before, wasNew, dk, rating });
+  if(undoStack.length > 30) undoStack.shift();
+  lastId = id; sessionDone++;
+  save(); renderStats(); next();
+}
+
+function markKnown(id){
+  const now = Date.now(), before = progress[id] ? { ...progress[id] } : undefined;
+  const ivl = CFG.knownIvl;
+  progress[id] = { ...(before || {}), state:'review', step:0, ease: Math.max(before?.ease || CFG.startEase, CFG.startEase), ivl,
+                   due: startOfDay(now) + ivl*DAY, reps: (before?.reps || 0) + 1, lapses: before?.lapses || 0, last: now };
+  undoStack.push({ id, before, wasNew:false, dk:null, rating:0 });
+  lastId = id; save(); renderStats();
+}
+
+function undo(){
+  const u = undoStack.pop(); if(!u) return;
+  if(u.before) progress[u.id] = u.before; else delete progress[u.id];
+  if(u.dk){
+    const st = stats[u.dk];
+    if(st){ st.reviews = Math.max(0, st.reviews-1); if(u.rating === 1) st.again = Math.max(0, st.again-1); if(u.wasNew) st.new = Math.max(0, st.new-1); }
+    if(u.wasNew && settings.newDay.date === u.dk) settings.newDay.count = Math.max(0, settings.newDay.count-1);
+    sessionDone = Math.max(0, sessionDone-1);
+  }
+  save(); renderStats();
+  current = byId[u.id]; flipped = false; lastId = null; renderStudy();
+}
+
+// ================== форматирование ==================
+const esc = s => String(s ?? '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+const trim1 = x => x.toFixed(1).replace(/\.0$/, '');
+function fmtDays(d){ return d < 30 ? `${d} д` : d < 365 ? `${trim1(d/30)} мес` : `${trim1(d/365)} г`; }
+function fmtMs(ms){ const m = Math.round(ms / MIN); if(m < 1) return '<1 мин'; if(m < 60) return `${m} мин`; const h = m/60; return h < 24 ? `${trim1(h)} ч` : fmtDays(Math.round(h/24)); }
+function preview(id, rating){
+  const now = Date.now(), s = schedule(progress[id], rating, now, false);
+  return s.state === 'review' ? fmtDays(s.ivl) : fmtMs(s.due - now);
+}
+
+// ================== отрисовка ==================
+function renderStats(){
+  const cards = deck.filter(inBatch);
+  const c = { new:0, learning:0, young:0, mature:0 };
+  cards.forEach(x => c[statusOf(x.id)]++);
+  document.getElementById('stats').innerHTML =
+    `<div class="stat"><b>${cards.length}</b><span>всего слов</span></div>
+     <div class="stat"><b style="color:var(--c-mature)">${c.mature}</b><span>изучено (≥21 д)</span></div>
+     <div class="stat"><b style="color:var(--c-young)">${c.young}</b><span>повторяю</span></div>
+     <div class="stat"><b style="color:var(--c-lrn)">${c.learning}</b><span>учу</span></div>
+     <div class="stat"><b style="color:var(--c-gray)">${c.new}</b><span>новых</span></div>`;
+  const t = cards.length || 1;
+  document.getElementById('bar').innerHTML =
+    `<i style="width:${c.mature/t*100}%;background:var(--c-mature)"></i><i style="width:${c.young/t*100}%;background:var(--c-young)"></i><i style="width:${c.learning/t*100}%;background:var(--c-lrn)"></i>`;
+  const st = stats[dayKey(Date.now())] || { reviews:0, again:0 };
+  const acc = st.reviews ? Math.round((1 - st.again/st.reviews) * 100) : null;
+  document.getElementById('today').textContent =
+    `Сегодня: ${st.reviews} ответов${acc !== null ? ` · верно ${acc}%` : ''} · новых ${newDoneToday()} из ${settings.newLimit}`;
+}
+
+let waitTimer = null;
+function renderStudy(){
+  clearTimeout(waitTimer);
+  const area = document.getElementById('studyArea');
+  const q = queues();
+  const cur = current ? (statusOf(current.id) === 'new' ? 'n' : isLrn(progress[current.id]) ? 'l' : 'r') : '';
+  const nN = q.fresh.length, nL = q.lrnAhead.length, nR = q.rev.length;
+  const counts = `<div class="counts">
+      <span style="color:var(--c-new)" class="${cur==='n'?'cur':''}" title="новые">${nN}</span>
+      <span style="color:var(--c-lrn)" class="${cur==='l'?'cur':''}" title="на изучении">${nL}</span>
+      <span style="color:var(--c-rev)" class="${cur==='r'?'cur':''}" title="к повторению">${nR}</span></div>`;
+
+  if(!current){
+    const nextLrn = q.lrnAll[0];
+    const waitMs = nextLrn ? progress[nextLrn.id].due - CFG.learnAheadMin*MIN - Date.now() : null;
+    area.innerHTML = `${counts}<div class="card done">
+      <div class="word" style="font-size:28px">${sessionDone ? 'На сегодня всё 🎉' : 'Сейчас нечего повторять'}</div>
+      <p class="small">${nextLrn ? `Следующая карточка на изучении — через ${fmtMs(progress[nextLrn.id].due - Date.now())}.` : 'Повторения придут по расписанию.'}
+      ${newDoneToday() >= settings.newLimit ? '<br>Лимит новых на сегодня исчерпан — его можно поднять сверху.' : ''}</p>
+      <div class="row" style="justify-content:center">${undoStack.length ? '<button class="btn" id="undoBtn">Отменить последний ответ</button>' : ''}</div></div>`;
+    const ub = document.getElementById('undoBtn'); if(ub) ub.onclick = undo;
+    waitTimer = setTimeout(() => { if(!current) next(); },
+                           waitMs !== null && waitMs > 0 ? Math.min(waitMs + 500, 60000) : 30000);
+    return;
+  }
+
+  const c = current, st = statusOf(c.id);
+  const front = settings.dir === 'en'
+    ? `<div class="word">${esc(c.en)}</div><div class="tr">${esc(c.tr)}</div>`
+    : `<div class="word" style="font-size:30px">${esc(c.ru)}</div>`;
+  const back = settings.dir === 'en'
+    ? `<div class="ru">${esc(c.ru)}</div>`
+    : `<div class="ru">${esc(c.en)}</div><div class="tr">${esc(c.tr)}</div>`;
+  const labels = ['Снова','Трудно','Хорошо','Легко'];
+  const buttons = flipped
+    ? `<div class="actions">${labels.map((l,i) => `<button class="r${i+1}" data-r="${i+1}"><small>${preview(c.id, i+1)}</small>${l}</button>`).join('')}</div>`
+    : `<div class="actions single"><button class="show" id="showBtn">Показать ответ</button></div>`;
+
+  area.innerHTML = `${counts}
+    <div class="card" id="card">
+      <span class="tag">${statusRu[st]}${progress[c.id]?.lapses ? ` · провалов: ${progress[c.id].lapses}` : ''}</span>
+      <button class="speak" id="speakBtn" title="Произнести (S)">🔊</button>
+      ${front}
+      <div class="ans ${flipped ? '' : 'hidden'}">
+        ${back}
+        <div class="ex">${esc(c.ex)}</div>
+        <div class="exru">${esc(c.exRu)}</div>
+        ${c.note ? `<div class="note">💡 ${esc(c.note)}</div>` : ''}
+      </div>
+    </div>
+    ${buttons}
+    <div class="sub">
+      <button class="link" id="undoBtn" ${undoStack.length ? '' : 'disabled'}>↶ Отменить (Z)</button>
+      <span>Пробел · 1–4 · S</span>
+      <button class="link" id="knownBtn">Уже знаю →</button>
+    </div>`;
+  document.getElementById('card').onclick = e => { if(e.target.id === 'speakBtn') return; if(!flipped) flip(); };
+  document.getElementById('speakBtn').onclick = speak;
+  document.getElementById('undoBtn').onclick = undo;
+  document.getElementById('knownBtn').onclick = () => { markKnown(c.id); next(); };
+  const sb = document.getElementById('showBtn'); if(sb) sb.onclick = flip;
+  area.querySelectorAll('[data-r]').forEach(b => b.onclick = () => answer(Number(b.dataset.r)));
+}
+
+function flip(){ if(!current || flipped) return; flipped = true; renderStudy(); if(settings.dir === 'ru') speak(); }
+function speak(){
+  if(!current || !window.speechSynthesis) return;
+  const u = new SpeechSynthesisUtterance(current.en); u.lang = 'en-GB'; u.rate = .9;
+  speechSynthesis.cancel(); speechSynthesis.speak(u);
+}
+
+function renderList(){
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  const f = document.getElementById('statusFilter').value;
+  const now = Date.now();
+  const when = p => { if(isLrn(p)) return p.due <= now ? 'сейчас' : `через ${fmtMs(p.due - now)}`;
+                      const d = Math.round((p.due - startOfDay(now)) / DAY); return d <= 0 ? 'сегодня' : d === 1 ? 'завтра' : `через ${fmtDays(d)}`; };
+  const rows = deck.filter(inBatch)
+    .filter(c => !f || statusOf(c.id) === f)
+    .filter(c => !q || c.en.toLowerCase().includes(q) || c.ru.toLowerCase().includes(q))
+    .map(c => { const st = statusOf(c.id), p = progress[c.id];
+      return `<tr><td><b>${esc(c.en)}</b><br><span class="muted">${esc(c.tr)}</span></td>
+        <td>${esc(c.ru)}</td><td><span class="pill p-${st}">${statusRu[st]}</span></td>
+        <td>${st === 'new' ? '—' : `${isLrn(p) ? 'шаги' : fmtDays(p.ivl)} · ${Math.round(p.ease*100)}%`}</td>
+        <td>${st === 'new' ? '—' : when(p)}</td>
+        <td>${st === 'new' ? `<button class="link" data-known="${c.id}">знаю</button>` : `<button class="link" data-reset="${c.id}">сбросить</button>`}</td></tr>`; });
+  document.getElementById('listBody').innerHTML = rows.join('') || '<tr><td colspan="6" class="muted">Ничего не найдено</td></tr>';
+  document.querySelectorAll('[data-reset]').forEach(b => b.onclick = () => { delete progress[b.dataset.reset]; save(); renderStats(); renderList(); if(!current) next(); });
+  document.querySelectorAll('[data-known]').forEach(b => b.onclick = () => {
+    const id = Number(b.dataset.known); markKnown(id); renderList(); if(current && current.id === id) next(); });
+}
+
+// ================== экспорт / импорт ==================
+function buildExport(){
+  const summary = { new:0, learning:0, young:0, mature:0 };
+  deck.forEach(c => summary[statusOf(c.id)]++);
+  return {
+    resetAt: settings.resetAt || 0, format: 'lesson5-sm2-v1', exportedAt: new Date().toISOString(), totalCards: deck.length, summary,
+    mature: deck.filter(c => statusOf(c.id) === 'mature').map(c => c.en),
+    young: deck.filter(c => statusOf(c.id) === 'young').map(c => c.en),
+    learning: deck.filter(c => statusOf(c.id) === 'learning').map(c => c.en),
+    hardest: deck.filter(c => progress[c.id]?.lapses).sort((a,b) => progress[b.id].lapses - progress[a.id].lapses).slice(0, 15)
+                 .map(c => ({ en: c.en, lapses: progress[c.id].lapses, ease: progress[c.id].ease })),
+    progress, stats,
+  };
+}
+document.getElementById('exportBtn').onclick = () => {
+  const data = buildExport();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type:'application/json' }));
+  a.download = 'progress_lesson5.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+document.getElementById('importInput').onchange = e => {
+  const file = e.target.files[0]; if(!file) return;
+  file.text().then(t => {
+    try{
+      const d = JSON.parse(t);
+      if(d.format) checkFormat(d);
+      settings.resetAt = d.resetAt || 0;
+      progress = migrate(d.progress || d);
+      if(d.stats) stats = d.stats;
+      save(); renderStats(); renderList(); undoStack = []; next();
+      document.getElementById('ioMsg').textContent = 'Прогресс загружен ✔';
+    }catch(err){ document.getElementById('ioMsg').textContent = 'Не удалось прочитать файл: ' + err.message; }
+  });
+  e.target.value = '';
+};
+let resetArmed = false;
+document.getElementById('resetBtn').onclick = e => {
+  if(!resetArmed){ resetArmed = true; e.target.textContent = 'Точно сбросить? Нажми ещё раз';
+    setTimeout(() => { resetArmed = false; e.target.textContent = 'Сбросить весь прогресс'; }, 4000); return; }
+  progress = {}; stats = {}; settings.resetAt = Date.now(); settings.newDay = { date:'', count:0 }; undoStack = [];
+  save(); renderStats(); renderList(); next(); e.target.textContent = 'Сброшено'; resetArmed = false;
+};
+
+// ================== управление ==================
+const batches = [...new Set(deck.map(c => c.batch))].sort((a,b) => a - b);
+document.getElementById('batchSel').innerHTML = '<option value="all">Все</option>' + batches.map(b => `<option value="${b}">Партия ${b}</option>`).join('');
+document.getElementById('batchSel').value = settings.batch;
+document.getElementById('dirSel').value = settings.dir;
+document.getElementById('newLimit').value = settings.newLimit;
+document.getElementById('batchSel').onchange = e => { settings.batch = e.target.value; save(); renderStats(); renderList(); next(); };
+document.getElementById('dirSel').onchange = e => { settings.dir = e.target.value; save(); renderStudy(); };
+document.getElementById('newLimit').onchange = e => { settings.newLimit = Math.max(0, Number(e.target.value) || 0); save(); renderStats(); if(!current) next(); else renderStudy(); };
+document.getElementById('search').oninput = renderList;
+document.getElementById('statusFilter').onchange = renderList;
+
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x === b));
+  ['study','list','settings'].forEach(t => document.getElementById('tab-'+t).classList.toggle('hidden', t !== b.dataset.tab));
+  if(b.dataset.tab === 'list') renderList();
+  if(b.dataset.tab === 'study') renderStudy();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.target.closest?.('.study-tools, #finishMistakes')) return;
+  if(document.getElementById('tab-study').classList.contains('hidden') || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+  const k = e.key.toLowerCase();
+  if(e.code === 'Space' || e.key === 'Enter'){ e.preventDefault(); if(!flipped) flip(); else answer(3); }
+  else if(['1','2','3','4'].includes(e.key)) answer(Number(e.key));
+  else if(k === 'z' || k === 'я'){ e.preventDefault(); undo(); }
+  else if(k === 's' || k === 'ы') speak();
+});
+
+renderStats();
+next();
+const FILE_DB = 'lesson5-cards';
+const FILE_NAME = 'progress_lesson5.json';
+function checkFormat(d){
+  if(d?.format !== 'lesson5-sm2-v1' || !d.progress || typeof d.progress !== 'object')
+    throw new Error('Выбери файл прогресса лексики урока 5');
+}
+function refreshAll({preserveCard = false} = {}){
+  renderStats();
+  renderList();
+  if(current && (preserveCard || flipped)) renderStudy(); else next();
+}
+</script>
+<script src="../autosave.js"></script>
+<script src="../sync-state.js"></script>
+<script src="../cloud-sync.js"></script>
+</body>
+</html>

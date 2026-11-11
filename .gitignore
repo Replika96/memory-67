@@ -1,6 +1,8 @@
 # Only the published app and its deployment configuration belong in Git.
 /*
 !/.gitignore
+!/AGENTS.md
+!/PROJECT_NOTES.md
 !/.github/
 !/.firebaserc
 !/firebase.json
@@ -29,3 +31,8 @@
 /finance/*
 !/finance/cards.js
 !/finance/flashcards.html
+
+!/lesson5/
+/lesson5/*
+!/lesson5/cards.js
+!/lesson5/flashcards.html
