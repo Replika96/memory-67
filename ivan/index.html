@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Колоды Batman</title>
+  <link rel="stylesheet" href="../library.css">
+  <script defer src="../register.js"></script>
+  <script defer src="catalog.js"></script>
+</head>
+<body class="library">
+  <div class="library-bar"><a class="library-name" href="../index.html">Мои карточки</a><span>Batman</span></div>
+  <main>
+    <h1>Колоды Batman</h1>
+    <div class="ivan-tools">
+      <input id="deckSearch" type="search" placeholder="Найти колоду или урок" aria-label="Поиск колоды">
+      <label class="btn">Загрузить прогресс Anki<input id="progressImport" type="file" accept=".json" hidden></label>
+      <button class="btn" id="progressExport">Скачать прогресс всех колод</button>
+    </div>
+    <p id="catalogStatus" role="status">Загрузка каталога…</p>
+    <p>Для первого переноса выбери файл ivan-progress.json. Затем открой нужную колоду и войди через Google для её синхронизации. Полная история Anki сохранена отдельно в исходном архиве.</p>
+    <div id="deckCatalog"></div>
+  </main>
+</body>
+</html>

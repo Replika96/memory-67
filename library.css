@@ -60,3 +60,13 @@
 .study-tools { display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; margin:0 0 12px; font-size:13px; color:var(--muted); }
 .study-tools [hidden] { display:none; }
 .previous-miss { display:block; margin-top:3px; color:var(--muted); font-size:12px; }
+
+.ivan-tools { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+.ivan-tools input[type=search] { flex:1; min-width:180px; padding:10px; font:inherit; }
+.ivan-tools .btn { padding:9px; cursor:pointer; border:1px solid var(--line); border-radius:8px; }
+.library details.topic { padding:16px; margin:12px 0; border:1px solid var(--line); border-radius:12px; }
+.library details summary { cursor:pointer; }
+.library details p { overflow-wrap:anywhere; }
+.anki-content { overflow-wrap:anywhere; text-align:left; }
+.anki-content img { display:block; max-width:100%; max-height:70vh; object-fit:contain; margin:12px auto; }
+.anki-content table { display:block; overflow-x:auto; }

@@ -10,3 +10,13 @@ foreach ($asset in $assets) {
     [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target))
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $asset) -Destination $target
 }
+
+# Generated Anki content. Progress and the original archive stay in ivan-private.
+$ivanAssets = @('index.html','catalog.js','catalog.json','load-deck.js','flashcards.html')
+$ivanAssets += @(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'ivan/decks') -File -Filter '*.js' | ForEach-Object { 'decks/' + $_.Name })
+$ivanAssets += @(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'ivan/media') -File -Filter '*.jpg' | ForEach-Object { 'media/' + $_.Name })
+foreach ($asset in $ivanAssets) {
+    $target = Join-Path $destination ('ivan/' + $asset)
+    [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target))
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot ('ivan/' + $asset)) -Destination $target
+}
