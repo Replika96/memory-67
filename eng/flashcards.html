@@ -152,6 +152,7 @@
   </section>
 </main>
 
+<script src="../progress-storage.js"></script>
 <script src="cards.js"></script>
 <script>
 // ================== параметры (как дефолты Anki) ==================
@@ -178,8 +179,8 @@ const deck = (window.DECK || []).slice().sort((a,b) => a.id - b.id);
 const byId = Object.fromEntries(deck.map(c => [c.id, c]));
 
 const store = {
-  get(k, d){ try{ const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); }catch(e){ return d } },
-  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)) }catch(e){} }
+  get: (key, fallback) => progressStorage.read(key, fallback),
+  set: (key, value) => progressStorage.write({[key]:value})
 };
 
 // ================== время ==================
@@ -207,7 +208,11 @@ let progress = store.get(KEY, null);
 if(!progress){ progress = migrate(store.get(KEY_V1, {})); store.set(KEY, progress); }
 let settings = Object.assign({ batch:'all', dir:'en', newLimit:10, newDay:{date:'', count:0} }, store.get(SETTINGS_KEY, {}));
 let stats = store.get(STATS_KEY, {});   // 'YYYY-MM-DD' -> {reviews, again, new}
-const saveLocal = () => { store.set(KEY, progress); store.set(SETTINGS_KEY, settings); store.set(STATS_KEY, stats); window.dispatchEvent(new Event('progress-saved')); };
+const saveLocal = () => {
+  const saved = progressStorage.write({[KEY]:progress, [SETTINGS_KEY]:settings, [STATS_KEY]:stats});
+  window.dispatchEvent(new CustomEvent('progress-saved', {detail:{localSaved:saved}}));
+  return saved;
+};
 const save = () => { saveLocal(); scheduleWrite(); };
 
 // ================== планировщик SM-2 (Anki) ==================

@@ -20,6 +20,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Check progress and sync regressions
+        run: node tests/sync-regression.cjs
       - uses: actions/cache@v4
         with:
           path: ~/.npm

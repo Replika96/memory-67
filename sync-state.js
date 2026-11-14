@@ -1,9 +1,17 @@
 // Shared by the offline queue and the Firestore listener.
 const syncState = (() => {
+  function equal(a, b) {
+    if (a === b) return true;
+    if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+    const keys = Object.keys(a);
+    return keys.length === Object.keys(b).length &&
+      keys.every(key => Object.hasOwn(b,key) && equal(a[key],b[key]));
+  }
   function changes(before, after) {
     const result = {};
     for (const key of new Set([...Object.keys(before), ...Object.keys(after)])) {
-      if (JSON.stringify(before[key]) !== JSON.stringify(after[key])) {
+      if (!equal(before[key], after[key])) {
         result[key] = after[key] ?? null;
       }
     }
@@ -21,30 +29,43 @@ const syncState = (() => {
       }
     }
     if (after.reset > before.reset) return { kind: 'reset', ...after };
-    if (Object.keys(cards).length || Object.keys(days).length) return {kind:'patch', cards, days};
+    if (Object.keys(cards).length || Object.keys(days).length) return {kind:'patch', cards, days, reset:after.reset};
   }
   function replay(events) {
     const state = {cards:{}, days:{}, reset:0};
-    // Seeds describe pre-sync history. Overlapping backups must only count once.
-    for (const event of events.filter(e => e.kind === 'seed').sort((a,b) => a.reset-b.reset)) {
-      if (event.reset > state.reset) Object.assign(state, {cards:{}, days:{}, reset:event.reset});
-      for (const [id, card] of Object.entries(event.cards)) {
-        if (!state.cards[id] || card.last > state.cards[id].last) state.cards[id] = card;
-      }
-      for (const [day, stats] of Object.entries(event.days)) {
-        if (!state.days[day] || stats.reviews > state.days[day].reviews) state.days[day] = {...stats};
-      }
-    }
-    const edits = events.filter(e => e.kind !== 'seed').sort((a,b) => a.at-b.at || a.id.localeCompare(b.id));
-    for (const event of edits) {
-      if (event.at < state.reset) continue;
-      if (event.kind === 'reset') {
+    const versions = new Map();
+    const ordered = [...new Map(events.map(event => [event.id,event])).values()]
+      .sort((a,b) => a.at-b.at || a.id.localeCompare(b.id));
+    for (const event of ordered) {
+      if (event.at < state.reset || (event.reset != null && event.reset < state.reset)) continue;
+      if (event.kind === 'reset' || (event.kind === 'seed' && event.reset > state.reset)) {
         Object.assign(state, {cards:{...event.cards}, days:JSON.parse(JSON.stringify(event.days)), reset:event.reset});
+        versions.clear();
+        for (const id of Object.keys(state.cards)) versions.set(id,event.at);
+        continue;
+      }
+      if (event.kind === 'seed') {
+        // Legacy snapshots have no event provenance. Merge their overlapping day
+        // totals by maximum, at their position in history, rather than counting
+        // earlier journal entries again. Independent legacy histories cannot be
+        // distinguished exactly from overlapping backups.
+        for (const [id,card] of Object.entries(event.cards)) {
+          const updated = card.last || 0;
+          if (updated >= state.reset && (!versions.has(id) || updated > versions.get(id))) {
+            state.cards[id] = card;
+            versions.set(id,updated);
+          }
+        }
+        for (const [day,total] of Object.entries(event.days)) {
+          const current = state.days[day] ||= {};
+          for (const [field,value] of Object.entries(total)) current[field] = Math.max(current[field] || 0,value);
+        }
         continue;
       }
       for (const [id, card] of Object.entries(event.cards)) {
         if (card) state.cards[id] = card;
         else delete state.cards[id];
+        versions.set(id,event.at);
       }
       for (const [day, delta] of Object.entries(event.days)) {
         const total = state.days[day] ||= {};
@@ -53,5 +74,5 @@ const syncState = (() => {
     }
     return state;
   }
-  return {patch, replay};
+  return {equal, patch, replay};
 })();

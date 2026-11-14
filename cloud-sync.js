@@ -4,6 +4,10 @@
   const studyStatus = document.getElementById('studySync');
   const studyLogin = document.getElementById('studyLogin');
   function report(summary, detail, login = false) {
+    if (progressStorage.failed) {
+      summary = 'Ошибка сохранения на устройстве';
+      detail = 'Локальная копия не обновлена. Скачайте резервную копию или повторите сохранение через предупреждение на экране.';
+    }
     status.textContent = detail;
     if (studyStatus) studyStatus.textContent = summary;
     if (studyLogin) studyLogin.hidden = !login;
@@ -12,23 +16,55 @@
   const capture = () => JSON.parse(JSON.stringify({cards:progress, days:stats, reset:settings.resetAt || 0}));
   const prefix = KEY + ':cloud:';
   const queuePrefix = prefix + 'event:';
-  const readQueue = () => Object.keys(localStorage).filter(k => k.startsWith(queuePrefix))
-    .map(k => JSON.parse(localStorage.getItem(k)));
-  let before = capture(), lastTime = Number(localStorage.getItem(prefix+'clock')) || 0;
+  const pending = new Map();
+  function owner() {
+    try {return localStorage.getItem(prefix+'owner');}
+    catch {progressStorage.fail('sync-read');return undefined;}
+  }
+  function readQueue() {
+    try {
+      const events = Object.keys(localStorage).filter(k => k.startsWith(queuePrefix))
+        .map(k => JSON.parse(localStorage.getItem(k)));
+      progressStorage.recovered('sync-read');
+      return [...new Map([...events,...pending.values()].map(e => [e.id,e])).values()];
+    } catch {
+      progressStorage.fail('sync-read');
+      return null;
+    }
+  }
+  let before = capture(), lastTime = progressStorage.read(prefix+'clock',0) || 0;
+  let ownerId = owner();
   let upload, auth, api, provider, started = false;
+  function rememberOwner() {
+    if (!ownerId) return;
+    try {
+      localStorage.setItem(prefix+'owner',ownerId);
+      progressStorage.recovered('sync-owner');
+    } catch {progressStorage.fail('sync-owner');}
+  }
+  function persistPending() {
+    if (!pending.size) return;
+    const entries = Object.fromEntries([...pending.values()].map(e => [queuePrefix+e.id,e]));
+    entries[prefix+'clock'] = lastTime;
+    progressStorage.write(entries,'sync-queue');
+  }
   function enqueue(data) {
     const at = Math.max(Date.now(), lastTime+1);
     const event = {...data, at, id:crypto.randomUUID()};
-    localStorage.setItem(queuePrefix+event.id, JSON.stringify(event));
-    localStorage.setItem(prefix+'clock', String(at));
+    pending.set(event.id,event);
     lastTime = at;
+    persistPending();
     upload?.();
   }
   window.addEventListener('progress-saved', () => {
     const after = capture();
-    if (localStorage.getItem(prefix+'owner')) {
+    if (ownerId === undefined) ownerId = owner();
+    if (ownerId === undefined) return;
+    if (ownerId) {
+      rememberOwner();
       const edit = syncState.patch(before, after);
       if (edit) enqueue(edit);
+      else {persistPending();upload?.();}
     }
     before = after;
   });
@@ -52,50 +88,63 @@
         return;
       }
       button.hidden = true;
-      const owner = localStorage.getItem(prefix+'owner');
-      if (owner && owner !== user.uid) {
+      const storedOwner = owner();
+      if (storedOwner === undefined) return;
+      if (storedOwner && storedOwner !== user.uid) {
         report('Аккаунт не совпадает', 'Прогресс в этом браузере связан с другим аккаунтом. Открой тренажёр в его профиле браузера.');
         return;
       }
       if (started) return;
       started = true;
-      if (!owner) {
+      ownerId = user.uid;
+      if (!storedOwner) {
         enqueue({kind:'seed', ...capture()});
-        localStorage.setItem(prefix+'owner', user.uid);
+        rememberOwner();
       }
       const collection = dbApi.collection(db,'users',user.uid,'decks',KEY,'events');
       const sending = new Set();
       upload = () => {
-        for (const event of readQueue()) {
+        const queue = readQueue();
+        if (!queue) return;
+        for (const event of queue) {
           if (sending.has(event.id)) continue;
           sending.add(event.id);
-          report('Сохранено на устройстве · ожидает синхронизации', 'Изменения сохранены на устройстве, ожидается синхронизация.');
+          report('Ожидает синхронизации', 'Изменения ожидают подтверждения облака.');
           dbApi.setDoc(dbApi.doc(collection,event.id),event).then(() => {
-            localStorage.removeItem(queuePrefix+event.id);
-            if (navigator.onLine && !readQueue().length) report('Синхронизировано', 'Синхронизировано · '+user.email);
+            pending.delete(event.id);
+            try {localStorage.removeItem(queuePrefix+event.id);}
+            catch {progressStorage.fail('sync-queue');}
+            const remaining = readQueue();
+            if (remaining && !remaining.length) {
+              progressStorage.recovered('sync-queue');
+              if (navigator.onLine) report('Синхронизировано', 'Синхронизировано · '+user.email);
+            }
           }).catch(e => { report('Ошибка синхронизации · прогресс на устройстве', 'Ошибка записи. Прогресс сохранён на устройстве. '+e.code); })
             .finally(() => sending.delete(event.id));
         }
       };
       dbApi.onSnapshot(collection,{includeMetadataChanges:true},snapshot => {
         if (snapshot.metadata.fromCache) return;
+        const queue = readQueue();
+        if (!queue) return;
         const events = new Map(snapshot.docs.map(doc => [doc.id,doc.data()]));
-        for (const event of readQueue()) events.set(event.id,event);
+        for (const event of queue) events.set(event.id,event);
         for (const event of events.values()) lastTime = Math.max(lastTime,event.at);
         const result = syncState.replay([...events.values()]);
-        if (JSON.stringify(before) !== JSON.stringify(result)) {
+        if (!syncState.equal(before,result)) {
+          undoStack = before.reset !== result.reset ? [] : undoStack.filter(entry =>
+            syncState.equal(before.cards[entry.id],result.cards[entry.id]));
           progress = result.cards;
           stats = result.days;
           settings.resetAt = result.reset;
           const today = dayKey(Date.now());
           settings.newDay = {date:today,count:stats[today]?.new || 0};
           before = capture();
-          undoStack = [];
           saveLocal();
           scheduleWrite();
           refreshAll({preserveCard:true});
         }
-        if (!readQueue().length && !snapshot.metadata.hasPendingWrites) report('Синхронизировано', 'Синхронизировано · '+user.email);
+        if (!queue.length && !snapshot.metadata.hasPendingWrites) report('Синхронизировано', 'Синхронизировано · '+user.email);
       }, e => { report('Ошибка чтения из облака', 'Ошибка чтения облака. '+e.code); });
       upload();
       window.addEventListener('online',upload);
