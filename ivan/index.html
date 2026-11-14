@@ -5,21 +5,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Колоды Batman</title>
   <link rel="stylesheet" href="../library.css">
+  <link rel="stylesheet" href="catalog.css">
   <script defer src="../register.js"></script>
   <script defer src="catalog.js"></script>
 </head>
-<body class="library">
+<body class="library batman-library">
   <div class="library-bar"><a class="library-name" href="../index.html">Мои карточки</a><span>Batman</span></div>
   <main>
-    <h1>Колоды Batman</h1>
-    <div class="ivan-tools">
-      <input id="deckSearch" type="search" placeholder="Найти колоду или урок" aria-label="Поиск колоды">
-      <label class="btn">Загрузить прогресс Anki<input id="progressImport" type="file" accept=".json" hidden></label>
-      <button class="btn" id="progressExport">Скачать прогресс всех колод</button>
+    <header class="catalog-hero">
+      <div>
+        <h1>Batman<span class="hero-dot">.</span></h1>
+        <p class="hero-caption">Колоды по предметам</p>
+      </div>
+      <div class="catalog-total" id="catalogTotals">Загрузка каталога…</div>
+    </header>
+    <details class="progress-panel">
+      <summary>Перенос и сохранение прогресса</summary>
+      <p>Для первого переноса выбери ivan-progress.json. Затем открывай колоды под своим Google-аккаунтом для синхронизации.</p>
+      <div class="ivan-tools">
+        <label class="btn">Загрузить прогресс Anki<input id="progressImport" type="file" accept=".json" hidden disabled></label>
+        <button class="btn" id="progressExport" disabled>Скачать прогресс всех колод</button>
+      </div>
+      <p id="catalogStatus" role="status"></p>
+    </details>
+    <div class="catalog-layout">
+      <aside class="subject-sidebar">
+        <nav id="subjectNav" aria-label="Предметы"></nav>
+      </aside>
+      <div class="catalog-content">
+        <div class="catalog-toolbar">
+          <input id="deckSearch" type="search" placeholder="Найти колоду или урок" aria-label="Поиск колоды">
+          <label class="sort-field">Сортировка внутри предмета
+            <select id="deckSort">
+              <option value="newest">Сначала новые</option>
+              <option value="oldest">Сначала старые</option>
+              <option value="title">По названию</option>
+            </select>
+          </label>
+        </div>
+        <p id="catalogResults" class="catalog-results" role="status"></p>
+        <div id="deckCatalog"></div>
+      </div>
     </div>
-    <p id="catalogStatus" role="status">Загрузка каталога…</p>
-    <p>Для первого переноса выбери файл ivan-progress.json. Затем открой нужную колоду и войди через Google для её синхронизации. Полная история Anki сохранена отдельно в исходном архиве.</p>
-    <div id="deckCatalog"></div>
   </main>
 </body>
 </html>

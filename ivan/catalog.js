@@ -2,21 +2,121 @@
   const status = document.getElementById('catalogStatus');
   const container = document.getElementById('deckCatalog');
   const search = document.getElementById('deckSearch');
+  const sort = document.getElementById('deckSort');
+  const navigation = document.getElementById('subjectNav');
+  const results = document.getElementById('catalogResults');
+  const subjects = [
+    {id:'italian', title:'Итальянский', color:'#73916a'},
+    {id:'english', title:'Английский', color:'#6e91a4'},
+    {id:'military', title:'Военный перевод', color:'#a28a57'},
+    {id:'finance', title:'Финансы и учёт', color:'#8a80a3'},
+    {id:'economics', title:'Экономика и управление', color:'#b08872'},
+    {id:'history', title:'История и география', color:'#949375'},
+    {id:'other', title:'Другие колоды', color:'#8c9289'},
+  ];
   const esc = value => String(value).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const plural = (n, one, few, many) => n%10===1 && n%100!==11 ? one
+    : n%10>=2 && n%10<=4 && (n%100<12 || n%100>14) ? few : many;
+  const count = (n, forms) => n.toLocaleString('ru-RU')+' '+plural(n,...forms);
+  const deckCount = n => count(n,['колода','колоды','колод']);
+  const cardCount = n => count(n,['карточка','карточки','карточек']);
+  const collator = new Intl.Collator('ru',{numeric:true,sensitivity:'base'});
+  const formatter = new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'short',year:'numeric'});
+  function preference(name, fallback) {
+    try {return localStorage.getItem(name) || fallback;} catch {return fallback;}
+  }
+  function remember(name, value) {
+    try {localStorage.setItem(name,value);} catch {}
+  }
+  let selectedSubject = preference('batman-catalog-subject','all');
+  if (!subjects.some(s => s.id===selectedSubject)) selectedSubject = 'all';
+  sort.value = preference('batman-catalog-sort','newest');
+  if (!sort.value) sort.value = 'newest';
   let catalog = [];
   const key = id => 'ivan-anki-' + id + '-progress-v1';
+  function compare(a,b) {
+    if (sort.value !== 'title') {
+      if (a.createdAt == null && b.createdAt != null) return 1;
+      if (b.createdAt == null && a.createdAt != null) return -1;
+      const difference = (a.createdAt || 0)-(b.createdAt || 0);
+      if (difference) return sort.value==='newest' ? -difference : difference;
+    }
+    return collator.compare(a.displayTitle || a.title || a.name,b.displayTitle || b.title || b.name);
+  }
+  function sectionTree(sections) {
+    const roots = new Map();
+    for (const section of sections) {
+      const parts = section.name.split('::');
+      let nodes = roots;
+      for (let i=0;i<parts.length;i++) {
+        const name = parts[i], path = parts.slice(0,i+1).join('::');
+        if (!nodes.has(name)) nodes.set(name,{name,path,count:0,createdAt:null,children:new Map()});
+        const node = nodes.get(name);
+        if (i===parts.length-1) Object.assign(node,{count:section.count,createdAt:section.createdAt});
+        nodes = node.children;
+      }
+    }
+    return [...roots.values()].flatMap(node => [...node.children.values()]);
+  }
+  function treeHtml(nodes, url, query, rootMatches) {
+    const items = nodes.sort(compare).map(node => {
+      const matches = rootMatches || node.path.toLocaleLowerCase().includes(query);
+      const children = treeHtml([...node.children.values()],url,query,matches);
+      if (!matches && !children) return '';
+      const label = node.count ? '<a href="'+url+'&section='+encodeURIComponent(node.path)+'">'+esc(node.name)+'</a>' : esc(node.name);
+      return '<li>'+label+'<span class="tree-count">'+(node.count ? node.count.toLocaleString('ru-RU') : 'пусто')+'</span>'+children+'</li>';
+    }).join('');
+    return items ? '<ul class="deck-tree">'+items+'</ul>' : '';
+  }
+  function cardHtml(deck, query, openRoots) {
+    const url = 'flashcards.html?root='+deck.id;
+    const title = deck.displayTitle || deck.title;
+    const rootMatches = [deck.title,title].some(s => s.toLocaleLowerCase().includes(query));
+    const tree = treeHtml(sectionTree(deck.sections),url,query,rootMatches);
+    const date = deck.createdAt ? 'Создана '+formatter.format(deck.createdAt) : 'Дата создания не указана';
+    const original = title!==deck.title.trim() ? '<p class="deck-original">'+esc(deck.title)+'</p>' : '';
+    return '<article class="catalog-card" data-deck="'+deck.id+'"><time class="deck-date"'+
+      (deck.createdAt ? ' datetime="'+new Date(deck.createdAt).toISOString()+'"' : '')+'>'+date+'</time>'+
+      '<h3 class="deck-title"><a href="'+url+'">'+esc(title)+'</a></h3>'+original+
+      '<div class="deck-card-bottom"><span>'+cardCount(deck.count)+'</span>'+
+      (deck.count ? '<a class="deck-study" href="'+url+'">Учить →</a>' : '')+'</div>'+
+      (tree ? '<details class="deck-sections" data-root="'+deck.id+'"'+(query || openRoots.has(deck.id) ? ' open' : '')+
+        '><summary>Уроки и подколоды</summary>'+tree+'</details>' : '')+'</article>';
+  }
+  function renderSubjects() {
+    navigation.innerHTML = [{id:'all',title:'Все предметы'},...subjects].map(subject => {
+      const decks = catalog.filter(d => subject.id==='all' || (d.subject || 'other')===subject.id);
+      if (!decks.length) return '';
+      return '<button type="button" class="subject-choice" data-subject="'+subject.id+'" style="--subject-color:'+
+        (subject.color || '#596753')+'" aria-pressed="'+(selectedSubject===subject.id)+'">'+
+        '<span class="subject-mark" aria-hidden="true"></span><span>'+subject.title+'</span>'+
+        '<span class="subject-count" aria-label="'+deckCount(decks.length)+'">'+decks.length+'</span></button>';
+    }).join('');
+  }
   function render() {
     const query = search.value.trim().toLocaleLowerCase();
-    container.innerHTML = catalog.filter(deck => [deck.title,...deck.sections.map(s => s.name)].some(s => s.toLocaleLowerCase().includes(query)))
-      .map(deck => {
-        const url = 'flashcards.html?root=' + deck.id;
-        const sections = deck.sections.filter(s => !query || deck.title.toLocaleLowerCase().includes(query) || s.name.toLocaleLowerCase().includes(query));
-        return '<details class="topic"><summary><b>'+esc(deck.title)+'</b> · '+deck.count+' карточек</summary>'+
-          '<p><a href="'+url+'">Учить всю колоду</a></p>'+
-          sections.map(s => '<p>'+ (s.count ? '<a href="'+url+'&section='+encodeURIComponent(s.name)+'">'+esc(s.name)+'</a> · '+s.count : esc(s.name)+' · пустая колода')+'</p>').join('')+'</details>';
-      }).join('') || '<p>Колода не найдена</p>';
+    const openRoots = new Set([...container.querySelectorAll('details[data-root][open]')].map(d => d.dataset.root));
+    const matching = catalog.filter(deck => (selectedSubject==='all' || (deck.subject || 'other')===selectedSubject) &&
+      [deck.title,deck.displayTitle || '',...deck.sections.map(s => s.name)].some(s => s.toLocaleLowerCase().includes(query)));
+    container.innerHTML = subjects.filter(s => selectedSubject==='all' || s.id===selectedSubject).map(subject => {
+      const decks = matching.filter(d => (d.subject || 'other')===subject.id).sort(compare);
+      if (!decks.length) return '';
+      return '<section class="subject-section" data-category="'+subject.id+'" style="--subject-color:'+subject.color+'">'+
+        '<div class="subject-heading"><h2>'+subject.title+'</h2><span>'+deckCount(decks.length)+'</span></div>'+
+        '<div class="catalog-cards">'+decks.map(d => cardHtml(d,query,openRoots)).join('')+'</div></section>';
+    }).join('') || '<p class="catalog-empty">Ничего не найдено. Попробуй другой запрос или предмет.</p>';
+    results.textContent = deckCount(matching.length)+' · '+cardCount(matching.reduce((n,d)=>n+d.count,0));
+    for (const choice of navigation.querySelectorAll('[data-subject]')) choice.setAttribute('aria-pressed',String(choice.dataset.subject===selectedSubject));
   }
   search.oninput = render;
+  sort.onchange = () => {remember('batman-catalog-sort',sort.value);render();};
+  navigation.onclick = event => {
+    const choice = event.target.closest('[data-subject]');
+    if (!choice) return;
+    selectedSubject = choice.dataset.subject;
+    remember('batman-catalog-subject',selectedSubject);
+    render();
+  };
   document.getElementById('progressImport').onchange = async e => {
     try {
       const file = e.target.files[0];
@@ -71,6 +171,16 @@
     setTimeout(() => URL.revokeObjectURL(url),1000);
   };
   fetch('catalog.json').then(r => {if(!r.ok) throw Error('Каталог недоступен');return r.json();})
-    .then(data => {catalog=data; status.textContent=catalog.reduce((n,d)=>n+d.count,0)+' карточек · '+catalog.length+' основных колод';render();})
-    .catch(e => {status.textContent=e.message;});
+    .then(data => {
+      catalog = data;
+      const total = catalog.reduce((n,d)=>n+d.count,0);
+      const nodes = catalog.reduce((n,d)=>n+d.sections.length,0);
+      document.getElementById('catalogTotals').innerHTML = '<div><strong>'+total.toLocaleString('ru-RU')+'</strong><span>карточек</span></div>'+
+        '<div><strong>'+nodes+'</strong><span>колод и разделов</span></div>';
+      document.getElementById('progressImport').disabled = false;
+      document.getElementById('progressExport').disabled = false;
+      renderSubjects();
+      render();
+    })
+    .catch(e => {results.textContent=e.message;document.getElementById('catalogTotals').textContent='Каталог недоступен';});
 })();
