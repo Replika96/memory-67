@@ -33,7 +33,8 @@
   sort.value = preference('batman-catalog-sort','newest');
   if (!sort.value) sort.value = 'newest';
   let catalog = [];
-  const key = id => 'ivan-anki-' + id + '-progress-v1';
+  const key = id => catalog.find(deck => deck.id===id)?.progressKey || 'ivan-anki-' + id + '-progress-v1';
+  const statsKey = id => catalog.find(deck => deck.id===id)?.statsKey || 'ivan-anki-'+id+'-stats-v1';
   function compare(a,b) {
     if (sort.value !== 'title') {
       if (a.createdAt == null && b.createdAt != null) return 1;
@@ -52,7 +53,7 @@
         const name = parts[i], path = parts.slice(0,i+1).join('::');
         if (!nodes.has(name)) nodes.set(name,{name,path,count:0,createdAt:null,children:new Map()});
         const node = nodes.get(name);
-        if (i===parts.length-1) Object.assign(node,{count:section.count,createdAt:section.createdAt});
+        if (i===parts.length-1) Object.assign(node,{count:section.count,createdAt:section.createdAt,url:section.url});
         nodes = node.children;
       }
     }
@@ -63,13 +64,13 @@
       const matches = rootMatches || node.path.toLocaleLowerCase().includes(query);
       const children = treeHtml([...node.children.values()],url,query,matches);
       if (!matches && !children) return '';
-      const label = node.count ? '<a href="'+url+'&section='+encodeURIComponent(node.path)+'">'+esc(node.name)+'</a>' : esc(node.name);
+      const label = node.count ? '<a href="'+esc(node.url || url+'&section='+encodeURIComponent(node.path))+'">'+esc(node.name)+'</a>' : esc(node.name);
       return '<li>'+label+'<span class="tree-count">'+(node.count ? node.count.toLocaleString('ru-RU') : 'пусто')+'</span>'+children+'</li>';
     }).join('');
     return items ? '<ul class="deck-tree">'+items+'</ul>' : '';
   }
   function cardHtml(deck, query, openRoots) {
-    const url = 'flashcards.html?root='+deck.id;
+    const url = deck.url || 'flashcards.html?root='+deck.id;
     const title = deck.displayTitle || deck.title;
     const rootMatches = [deck.title,title].some(s => s.toLocaleLowerCase().includes(query));
     const tree = treeHtml(sectionTree(deck.sections),url,query,rootMatches);
@@ -135,13 +136,13 @@
         }
         updates.push([key(deck.id),JSON.stringify(existing)]);
         if (data.stats?.[deck.id]) {
-          const statsKey = 'ivan-anki-'+deck.id+'-stats-v1';
-          const stats = JSON.parse(localStorage.getItem(statsKey) || '{}');
+          const storageKey = statsKey(deck.id);
+          const stats = JSON.parse(localStorage.getItem(storageKey) || '{}');
           for (const [day,total] of Object.entries(data.stats[deck.id])) {
             if (!Number.isFinite(total.reviews) || !Number.isFinite(total.again)) throw Error('Некорректная статистика');
             if (!stats[day] || total.reviews > stats[day].reviews) stats[day] = total;
           }
-          updates.push([statsKey,JSON.stringify(stats)]);
+          updates.push([storageKey,JSON.stringify(stats)]);
         }
       }
       const previous = updates.map(([name]) => [name,localStorage.getItem(name)]);
@@ -162,7 +163,7 @@
     for (const deck of catalog) {
       const progress = localStorage.getItem(key(deck.id));
       if (progress) decks[deck.id] = JSON.parse(progress);
-      const daily = localStorage.getItem('ivan-anki-'+deck.id+'-stats-v1');
+      const daily = localStorage.getItem(statsKey(deck.id));
       if (daily) stats[deck.id] = JSON.parse(daily);
     }
     const url = URL.createObjectURL(new Blob([JSON.stringify({format:'ivan-anki-progress-v1',decks,stats})],{type:'application/json'}));
@@ -170,9 +171,10 @@
     link.href = url; link.download = 'ivan-progress.json'; link.click();
     setTimeout(() => URL.revokeObjectURL(url),1000);
   };
-  fetch('catalog.json').then(r => {if(!r.ok) throw Error('Каталог недоступен');return r.json();})
-    .then(data => {
-      catalog = data;
+  Promise.all(['catalog.json','extra-decks.json'].map(path =>
+    fetch(path).then(r => {if(!r.ok) throw Error('Каталог недоступен');return r.json();})))
+    .then(groups => {
+      catalog = groups.flat();
       const total = catalog.reduce((n,d)=>n+d.count,0);
       const nodes = catalog.reduce((n,d)=>n+d.sections.length,0);
       document.getElementById('catalogTotals').innerHTML = '<div><strong>'+total.toLocaleString('ru-RU')+'</strong><span>карточек</span></div>'+

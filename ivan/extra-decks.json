@@ -1,0 +1,32 @@
+[
+  {
+    "id": "lesson5",
+    "title": "Лексика · урок 5",
+    "displayTitle": "Лексика · урок 5",
+    "subject": "military",
+    "count": 27,
+    "createdAt": 1794344400000,
+    "createdAtSource": "project-history",
+    "url": "../lesson5/flashcards.html",
+    "progressKey": "lesson5-flashcards-progress-v2",
+    "statsKey": "lesson5-flashcards-stats-v1",
+    "sections": [{"name":"Лексика · урок 5","count":27}]
+  },
+  {
+    "id": "finance",
+    "title": "Оценка бизнеса",
+    "displayTitle": "Оценка бизнеса",
+    "subject": "finance",
+    "count": 24,
+    "createdAt": 1794085200000,
+    "createdAtSource": "project-history",
+    "url": "../finance/flashcards.html?topic=all",
+    "progressKey": "finance-cards-progress-v1",
+    "statsKey": "finance-cards-stats-v1",
+    "sections": [
+      {"name":"Оценка бизнеса","count":24},
+      {"name":"Оценка бизнеса::DCF","count":15,"url":"../finance/flashcards.html?topic=dcf"},
+      {"name":"Оценка бизнеса::Мультипликаторы","count":9,"url":"../finance/flashcards.html?topic=multiples"}
+    ]
+  }
+]

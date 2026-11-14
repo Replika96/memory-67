@@ -3,7 +3,7 @@ const assets = ['./','./index.html','./library.css','./app.webmanifest','./regis
   './sync-state.js','./cloud-sync.js','./autosave.js','./icon-192.png','./icon-512.png',
   './android/flashcards.html','./android/cards.js','./eng/flashcards.html','./eng/cards.js','./finance/flashcards.html','./finance/cards.js','./lesson5/flashcards.html','./lesson5/cards.js'];
 const paths = new Set(assets.map(asset => new URL(asset,self.registration.scope).href));
-const ivanAssets = ['index.html','flashcards.html','catalog.js','catalog.css','catalog.json','load-deck.js'];
+const ivanAssets = ['index.html','flashcards.html','catalog.js','catalog.css','batman-theme.css','catalog.json','extra-decks.json','load-deck.js'];
 assets.push(...ivanAssets.map(name => './ivan/'+name));
 for (const name of ivanAssets) paths.add(new URL('./ivan/'+name,self.registration.scope).href);
 self.addEventListener('install',event => {

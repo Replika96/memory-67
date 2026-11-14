@@ -1,0 +1,63 @@
+.batman-library, .batman-study {
+  color-scheme: dark;
+  --bg: #0f1116;
+  --card: #1b1e25;
+  --ink: #f4f1e7;
+  --muted: #a7abb6;
+  --line: #343840;
+  --accent: #f1c638;
+  --on-accent: #15171b;
+  --code-bg: #12151b;
+  --bat-yellow: #f1c638;
+  --bat-surface: #1b1e25;
+  --bat-soft: #252932;
+  --bat-ink: #f4f1e7;
+  --bat-muted: #a7abb6;
+  --bat-line: #343840;
+  --c-new: #86b2e0;
+  --c-young: #e4b84d;
+  --c-mature: #8abb83;
+  --c-gray: #a7abb6;
+  background: var(--bg);
+  color: var(--ink);
+}
+.batman-library .library-bar, .batman-study .library-bar {
+  background: #090b0f;
+  border-top: 3px solid var(--bat-yellow);
+  border-bottom: 1px solid #2e323b;
+  color: var(--ink);
+}
+.batman-library .library-name, .batman-study .library-name {
+  color: var(--bat-yellow);
+  letter-spacing: .015em;
+}
+.batman-study .deck-switch a { color: #c8cbd2; }
+.batman-study .deck-switch a:hover,
+.batman-study .deck-switch a[aria-current] { background: #343026; color: var(--bat-yellow); }
+.batman-study header nav button.active { color: #15171b; }
+.batman-study .actions button.show { color: #15171b; font-weight: 750; }
+.batman-study .library-bar a:focus-visible,
+.batman-study button:focus-visible,
+.batman-study input:focus-visible,
+.batman-study select:focus-visible { outline: 2px solid var(--bat-yellow); outline-offset: 3px; }
+.batman-study .study-tools > a { color: var(--bat-yellow); }
+.batman-study .card { box-shadow: 0 12px 34px #0003; }
+.batman-study header h1 { letter-spacing: -.02em; }
+.bat-emblem {
+  display: inline-block;
+  position: relative;
+  flex: 0 0 auto;
+  width: 86px;
+  height: 50px;
+  background: var(--bat-yellow);
+  border: 3px solid #111319;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #b28e2c;
+}
+.bat-emblem::before {
+  content: "";
+  position: absolute;
+  inset: 5px 7px 3px;
+  background: #111319;
+  clip-path: polygon(0 24%,10%30%,13%5%,27%34%,38%38%,43%30%,44%5%,50%20%,56%5%,57%30%,62%38%,73%34%,87%5%,90%30%,100%24%,94%57%,82%53%,80%76%,68%66%,61%81%,56%74%,50%100%,44%74%,39%81%,32%66%,20%76%,18%53%,6%57%);
+}
