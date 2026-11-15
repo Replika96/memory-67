@@ -424,6 +424,7 @@ function renderStudy(){
     const nextLrn = q.lrnAll[0];
     const waitMs = nextLrn ? progress[nextLrn.id].due - CFG.learnAheadMin*MIN - Date.now() : null;
     area.innerHTML = `${counts}<div class="card done">
+      <img class="bat-state-art" src="../ivan/art/${sessionDone ? 'celebrate' : 'rest'}.png" alt="" width="735" height="695">
       <div class="word" style="font-size:28px">${sessionDone ? 'На сегодня всё 🎉' : 'Сейчас нечего повторять'}</div>
       <p class="small">${nextLrn ? `Следующая карточка на изучении — через ${fmtMs(progress[nextLrn.id].due - Date.now())}.` : 'Повторения придут по расписанию.'}
       ${newDoneToday() >= settings.newLimit ? '<br>Лимит новых на сегодня исчерпан — его можно поднять сверху.' : ''}</p>

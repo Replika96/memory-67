@@ -105,7 +105,7 @@
       return '<section class="subject-section" data-category="'+subject.id+'" style="--subject-color:'+subject.color+'">'+
         '<div class="subject-heading"><h2>'+subject.title+'</h2><span>'+deckCount(decks.length)+'</span></div>'+
         '<div class="catalog-cards">'+decks.map(d => cardHtml(d,query,openRoots)).join('')+'</div></section>';
-    }).join('') || '<p class="catalog-empty">Ничего не найдено. Попробуй другой запрос или предмет.</p>';
+    }).join('') || '<div class="catalog-empty"><img class="bat-state-art" src="art/pause.png" alt="" width="977" height="1128"><p>Ничего не найдено. Попробуй другой запрос или предмет.</p></div>';
     results.textContent = deckCount(matching.length)+' · '+cardCount(matching.reduce((n,d)=>n+d.count,0));
     for (const choice of navigation.querySelectorAll('[data-subject]')) choice.setAttribute('aria-pressed',String(choice.dataset.subject===selectedSubject));
   }

@@ -13,6 +13,7 @@ foreach ($asset in $assets) {
 
 # Generated Anki content. Progress and the original archive stay in ivan-private.
 $ivanAssets = @('index.html','catalog.js','catalog.css','batman-theme.css','catalog.json','extra-decks.json','load-deck.js','flashcards.html')
+$ivanAssets += @('art/reading.png','art/celebrate.png','art/pause.png','art/rest.png')
 $ivanAssets += @(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'ivan/decks') -File -Filter '*.js' | ForEach-Object { 'decks/' + $_.Name })
 $ivanAssets += @(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'ivan/media') -File -Filter '*.jpg' | ForEach-Object { 'media/' + $_.Name })
 foreach ($asset in $ivanAssets) {

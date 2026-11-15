@@ -2,7 +2,9 @@
   color: var(--bat-ink);
 }
 .batman-library main { max-width: 1280px; padding: 44px 28px 80px; }
-.catalog-hero { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin: 0 0 30px; }
+.catalog-hero { position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: start; gap: 28px; min-height: 256px; box-sizing: border-box; padding: 32px; margin: 0 0 30px; border: 1px solid #51422d; border-radius: 18px; background: #19191b; }
+.hero-art { position: absolute; z-index: -1; right: 0; top: 0; width: min(48%, 270px); height: 100%; object-fit: cover; object-position: 50% 10%; mask-image: linear-gradient(to right, transparent, #000 35%); }
+.catalog-hero > :not(.hero-art) { max-width: 65%; }
 .hero-title { display: flex; align-items: center; gap: 20px; }
 .batman-library h1 { margin: 0; font-size: clamp(36px, 6vw, 62px); font-weight: 800; text-transform: uppercase; letter-spacing: -.045em; line-height: 1.05; }
 .hero-caption { margin: 9px 0 0; color: var(--bat-muted); font-size: 16px; }
@@ -59,6 +61,7 @@
 .deck-tree a:hover { text-decoration: underline; }
 .deck-tree .tree-count { color: var(--bat-muted); margin-left: 5px; font-size: 10px; white-space: nowrap; }
 .catalog-empty { padding: 40px 12px; text-align: center; color: var(--bat-muted); }
+.catalog-empty .bat-state-art { height: 210px; width: 260px; max-width: 100%; margin-bottom: 12px; }
 .batman-library :focus-visible { outline: 2px solid var(--bat-yellow); outline-offset: 3px; }
 @media (max-width: 960px) {
   .catalog-layout { grid-template-columns: 180px minmax(0,1fr); gap: 22px; }
@@ -66,7 +69,9 @@
 }
 @media (max-width: 640px) {
   .batman-library main { padding: 28px 16px 50px; }
-  .catalog-hero { align-items: start; gap: 18px; flex-wrap: wrap; }
+  .catalog-hero { gap: 24px; min-height: 232px; padding: 24px 20px; }
+  .hero-art { width: 74%; opacity: .6; object-position: 50% 59%; mask-image: linear-gradient(to right, transparent, #000 65%); }
+  .catalog-hero > :not(.hero-art) { max-width: 100%; }
   .hero-title { gap: 10px; }
   .hero-title .bat-emblem { width: 50px; height: 31px; border-width: 2px; }
   .hero-title .bat-emblem::before { inset: 3px 4px 2px; }

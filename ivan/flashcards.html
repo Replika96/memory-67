@@ -577,7 +577,7 @@ function renderStudy(){
   mistakesBtn.textContent = mistakeSession ? 'Выйти из повторения ошибок' : `Повторить ошибки · ${remaining}`;
   const canUndo = !!undoStack.length && (!mistakeSession || undoStack.at(-1).mistakeSession === mistakeSession);
   if(mistakeSession && !current){
-    area.innerHTML = `<div class="card done"><div class="q">Повторение ошибок завершено</div>
+    area.innerHTML = `<div class="card done"><img class="bat-state-art" src="art/celebrate.png" alt="" width="1195" height="1280"><div class="q">Повторение ошибок завершено</div>
       <div class="row"><button class="btn" id="finishMistakes">К обычному занятию</button>
       ${canUndo ? '<button class="link" id="undoBtn">Отменить последний ответ</button>' : ''}</div></div>`;
     document.getElementById('finishMistakes').onclick = mistakesBtn.onclick;
@@ -594,6 +594,7 @@ function renderStudy(){
     const waitMs = nextLrn ? progress[nextLrn.id].due - CFG.learnAheadMin*MIN - Date.now() : null;
     const empty = !deck.filter(inFilter).length;
     area.innerHTML = `${counts}<div class="card done">
+      <img class="bat-state-art" src="art/${sessionDone ? 'celebrate' : 'rest'}.png" alt="" width="735" height="695">
       <div class="q">${empty ? 'В этом фильтре пока нет карточек' : sessionDone ? 'На сегодня всё 🎉' : 'Сейчас нечего повторять'}</div>
       <p class="small">${empty ? '' : nextLrn ? `Следующая карточка на изучении — через ${fmtMs(progress[nextLrn.id].due - Date.now())}.` : 'Повторения придут по расписанию.'}
       ${!empty && newDoneToday() >= settings.newLimit ? '<br>Лимит новых на сегодня исчерпан — его можно поднять сверху.' : ''}</p>
