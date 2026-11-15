@@ -109,7 +109,8 @@
     <div class="controls">
       <input type="search" id="search" placeholder="Поиск…">
       <select id="statusFilter">
-        <option value="">Все</option><option value="new">Новые</option><option value="learning">Учу</option>
+        <option value="bookmarked">⚑ Отмеченные</option>
+        <option value="" selected>Все</option><option value="new">Новые</option><option value="learning">Учу</option>
         <option value="young">Повторяю</option><option value="mature">Изучено</option>
       </select>
     </div>
@@ -173,6 +174,24 @@ const CFG = {
 const MIN = 60000, HOUR = 3600000, DAY = 86400000;
 const KEY_V1 = 'eng-flashcards-progress-v1';
 const KEY = 'eng-flashcards-progress-v2';
+window.cardBookmarks = progressStorage.read(KEY + ':bookmarks', {}) || {};
+function bookmarkButton(id){
+  const active = !!window.cardBookmarks[id];
+  return `<button type="button" class="btn bookmark" data-bookmark="${id}" aria-pressed="${active}" title="${active ? 'Снять флажок' : 'Отложить на потом'}">${active ? '⚑ Отмечено' : '⚐ Отметить'}</button>`;
+}
+document.addEventListener('click', event => {
+  const button = event.target.closest('[data-bookmark]');
+  if(!button) return;
+  event.stopPropagation();
+  const id = button.dataset.bookmark;
+  const updated = {...window.cardBookmarks, [id]:!window.cardBookmarks[id]};
+  if(!progressStorage.write({[KEY + ':bookmarks']:updated})) return;
+  window.cardBookmarks = updated;
+  saveLocal();
+  renderStudy();
+  renderList();
+}, true);
+
 const SETTINGS_KEY = 'eng-flashcards-settings-v1';
 const STATS_KEY = 'eng-flashcards-stats-v1';
 const deck = (window.DECK || []).slice().sort((a,b) => a.id - b.id);
@@ -439,6 +458,7 @@ function renderStudy(){
       </div>
     </div>
     ${buttons}
+    <div class="bookmark-row">${bookmarkButton(c.id)}</div>
     <div class="sub">
       <button class="link" id="undoBtn" ${undoStack.length ? '' : 'disabled'}>↶ Отменить (Z)</button>
       <span>Пробел · 1–4 · S</span>
@@ -465,15 +485,15 @@ function renderList(){
   const now = Date.now();
   const when = p => { if(isLrn(p)) return p.due <= now ? 'сейчас' : `через ${fmtMs(p.due - now)}`;
                       const d = Math.round((p.due - startOfDay(now)) / DAY); return d <= 0 ? 'сегодня' : d === 1 ? 'завтра' : `через ${fmtDays(d)}`; };
-  const rows = deck.filter(inBatch)
-    .filter(c => !f || statusOf(c.id) === f)
+  const rows = deck.filter(c => f === 'bookmarked' || inBatch(c))
+    .filter(c => f === 'bookmarked' ? !!window.cardBookmarks[c.id] : !f || statusOf(c.id) === f)
     .filter(c => !q || c.en.toLowerCase().includes(q) || c.ru.toLowerCase().includes(q))
     .map(c => { const st = statusOf(c.id), p = progress[c.id];
       return `<tr><td><b>${esc(c.en)}</b><br><span class="muted">${esc(c.tr)}</span></td>
         <td>${esc(c.ru)}</td><td><span class="pill p-${st}">${statusRu[st]}</span></td>
         <td>${st === 'new' ? '—' : `${isLrn(p) ? 'шаги' : fmtDays(p.ivl)} · ${Math.round(p.ease*100)}%`}</td>
         <td>${st === 'new' ? '—' : when(p)}</td>
-        <td>${st === 'new' ? `<button class="link" data-known="${c.id}">знаю</button>` : `<button class="link" data-reset="${c.id}">сбросить</button>`}</td></tr>`; });
+        <td>${bookmarkButton(c.id)} ${st === 'new' ? `<button class="link" data-known="${c.id}">знаю</button>` : `<button class="link" data-reset="${c.id}">сбросить</button>`}</td></tr>`; });
   document.getElementById('listBody').innerHTML = rows.join('') || '<tr><td colspan="6" class="muted">Ничего не найдено</td></tr>';
   document.querySelectorAll('[data-reset]').forEach(b => b.onclick = () => { delete progress[b.dataset.reset]; save(); renderStats(); renderList(); if(!current) next(); });
   document.querySelectorAll('[data-known]').forEach(b => b.onclick = () => {
@@ -543,6 +563,7 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
 });
 
 document.addEventListener('keydown', e => {
+  if(e.target.closest?.('[data-bookmark]')) return;
   if (e.target.closest?.('.study-tools, #finishMistakes')) return;
   if(document.getElementById('tab-study').classList.contains('hidden') || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
   const k = e.key.toLowerCase();

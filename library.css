@@ -75,3 +75,8 @@
 .save-warning[hidden] { display:none; }
 .save-warning p { margin:0 0 12px; line-height:1.5; font-size:14px; }
 .save-warning button { margin:0 8px 6px 0; }
+
+.bookmark-row { margin-top:12px; display:flex; justify-content:flex-end; }
+.bookmark { font-size:13px; flex-shrink:0; }
+.bookmark[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); }
+@media(max-width:600px) { .row-head { flex-wrap:wrap; } }

@@ -13,7 +13,7 @@
     if (studyLogin) studyLogin.hidden = !login;
   }
   if (studyLogin) studyLogin.onclick = () => button.click();
-  const capture = () => JSON.parse(JSON.stringify({cards:progress, days:stats, reset:settings.resetAt || 0}));
+  const capture = () => JSON.parse(JSON.stringify({cards:progress, days:stats, reset:settings.resetAt || 0, ...(window.cardBookmarks ? {bookmarks:window.cardBookmarks} : {})}));
   const prefix = KEY + ':cloud:';
   const queuePrefix = prefix + 'event:';
   const pending = new Map();
@@ -131,9 +131,14 @@
         for (const event of queue) events.set(event.id,event);
         for (const event of events.values()) lastTime = Math.max(lastTime,event.at);
         const result = syncState.replay([...events.values()]);
+        if(window.cardBookmarks) result.bookmarks ||= {};
         if (!syncState.equal(before,result)) {
           undoStack = before.reset !== result.reset ? [] : undoStack.filter(entry =>
             syncState.equal(before.cards[entry.id],result.cards[entry.id]));
+          if(window.cardBookmarks){
+            window.cardBookmarks = result.bookmarks || {};
+            progressStorage.write({[KEY + ':bookmarks']:window.cardBookmarks});
+          }
           progress = result.cards;
           stats = result.days;
           settings.resetAt = result.reset;

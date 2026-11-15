@@ -178,7 +178,8 @@
     <div class="controls">
       <input type="search" id="search" placeholder="Поиск по вопросам и ответам…" style="flex:1;min-width:200px">
       <select id="statusFilter">
-        <option value="">Все статусы</option><option value="new">Новые</option><option value="learning">Учу</option>
+        <option value="bookmarked">⚑ Отмеченные</option>
+        <option value="" selected>Все статусы</option><option value="new">Новые</option><option value="learning">Учу</option>
         <option value="young">Повторяю</option><option value="mature">Изучено</option>
         <option value="missed">С пропущенными тезисами</option>
       </select>
@@ -247,6 +248,24 @@ const CFG = {
 };
 const MIN = 60000, HOUR = 3600000, DAY = 86400000;
 const KEY = 'ivan-anki-' + window.IVAN_ROOT + '-progress-v1';
+window.cardBookmarks = progressStorage.read(KEY + ':bookmarks', {}) || {};
+function bookmarkButton(id){
+  const active = !!window.cardBookmarks[id];
+  return `<button type="button" class="btn bookmark" data-bookmark="${id}" aria-pressed="${active}" title="${active ? 'Снять флажок' : 'Отложить на потом'}">${active ? '⚑ Отмечено' : '⚐ Отметить'}</button>`;
+}
+document.addEventListener('click', event => {
+  const button = event.target.closest('[data-bookmark]');
+  if(!button) return;
+  event.stopPropagation();
+  const id = button.dataset.bookmark;
+  const updated = {...window.cardBookmarks, [id]:!window.cardBookmarks[id]};
+  if(!progressStorage.write({[KEY + ':bookmarks']:updated})) return;
+  window.cardBookmarks = updated;
+  saveLocal();
+  renderStudy();
+  renderList();
+}, true);
+
 const SETTINGS_KEY = 'ivan-anki-' + window.IVAN_ROOT + '-settings-v1';
 const STATS_KEY = 'ivan-anki-' + window.IVAN_ROOT + '-stats-v1';
 
@@ -599,6 +618,7 @@ function renderStudy(){
       ${flipped ? `<div class="ans">${answerHtml(c, 'study')}</div>` : `<div class="hint">Ответь вслух, потом открой ответ (Пробел)${hasPts ? ` — и отметь, какие из ${c.pts.length} ключевых тезисов назвал` : ''}</div>`}
     </div>
     ${buttons}
+    <div class="bookmark-row">${bookmarkButton(c.id)}</div>
     <div class="sub">
       <button class="link" id="undoBtn" ${canUndo ? '' : 'disabled'}>↶ Отменить (Z)</button>
       <span>${flipped && hasPts ? 'Q–T тезисы · Пробел — рекомендованная · 1–4' : 'Пробел · 1–4'}</span>
@@ -639,7 +659,7 @@ function renderList(){
   const when = p => { if(isLrn(p)) return p.due <= now ? 'сейчас' : `через ${fmtMs(p.due - now)}`;
                       const d = Math.round((p.due - startOfDay(now)) / DAY); return d <= 0 ? 'сегодня' : d === 1 ? 'завтра' : `через ${fmtDays(d)}`; };
   const text = c => [c.q, (c.pts || []).join(' '), Array.isArray(c.a) ? c.a.join(' ') : c.a, c.code, c.note].join(' ').toLowerCase();
-  const byStatus = c => !f || (f === 'missed' ? (progress[c.id]?.missed?.length > 0) : statusOf(c.id) === f);
+  const byStatus = c => f === 'bookmarked' ? !!window.cardBookmarks[c.id] : !f || (f === 'missed' ? (progress[c.id]?.missed?.length > 0) : statusOf(c.id) === f);
   const matches = deck.filter(inFilter).filter(byStatus).filter(c => !qs || text(c).includes(qs));
   const rows = matches.slice(0, listLimit);
   let html = '', grp = '';
@@ -649,6 +669,7 @@ function renderList(){
     const st = statusOf(c.id), p = progress[c.id], open = openRows.has(c.id);
     html += `<div class="row-item"><div class="row-head" data-open="${c.id}">
         <div class="qq">${inline(c.q)}</div>
+        ${bookmarkButton(c.id)}
         <div class="meta"><span class="pill p-${st}">${p?.suspended ? 'Приостановлена' : statusRu[st]}</span><br>${st === 'new' ? '' : `${isLrn(p) ? 'шаги' : fmtDays(p.ivl)} · ${when(p)}`}${p?.missed?.length ? `<br><span style="color:var(--again)">не назвал: ${p.missed.length}</span>` : ''}</div></div>
       ${open ? `<div class="row-body">${answerHtml(c, 'list')}<div class="sub" style="justify-content:flex-end">
         ${p?.suspended ? `<button class="link" data-resume="${c.id}">Возобновить повторения</button>` : ''}
@@ -763,6 +784,7 @@ document.getElementById('search').oninput = () => {listLimit=100;renderList();};
 document.getElementById('statusFilter').onchange = renderList;
 
 document.addEventListener('keydown', e => {
+  if(e.target.closest?.('[data-bookmark]')) return;
   if (e.target.closest?.('.study-tools, #finishMistakes')) return;
   if(document.getElementById('tab-study').classList.contains('hidden') || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
   if(e.ctrlKey || e.metaKey || e.altKey) return;
