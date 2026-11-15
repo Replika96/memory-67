@@ -77,7 +77,6 @@
 </div>
 <header>
   <h1>Английский · B1–B2</h1>
-  <button class="filechip hidden" id="fileBtn"></button>
   <nav aria-label="Разделы колоды">
     <button data-tab="study" class="active">Учить</button>
     <button data-tab="list">Список слов</button>
@@ -119,21 +118,25 @@
 
   <!-- SETTINGS / PROGRESS -->
   <section id="tab-settings" class="hidden">
-    <h3>Синхронизация с телефоном</h3>
+    <h3>Сохранение и синхронизация</h3>
+    <p class="small">Прогресс сохраняется в браузере автоматически. После входа через Google он также синхронизируется между устройствами. Подключать файл для этого не нужно.</p>
     <p class="small" id="cloudStatus" role="status">Подключение к облаку…</p>
     <button class="btn" id="cloudLogin" hidden>Войти через Google</button>
-    <h3>Автосохранение в файл</h3>
+    <details class="file-backup" id="fileBackup">
+      <summary>Дополнительная копия в файл · необязательно</summary>
     <div id="fileSection">
+      <button class="filechip hidden" id="fileBtn" type="button"></button>
       <p class="small" id="fileInfo"></p>
       <div class="row">
-        <button class="btn" id="fileNewBtn">Выбрать / создать progress.json…</button>
-        <button class="btn" id="fileOpenBtn">Подключить существующий…</button>
+        <button class="btn" id="fileNewBtn">Создать резервный файл…</button>
+        <button class="btn" id="fileOpenBtn">Подключить существующий файл…</button>
         <button class="btn hidden" id="fileOffBtn">Отключить</button>
       </div>
     </div>
+    </details>
 
-    <h3>Вручную</h3>
-    <p class="small" id="ioMsg">Прогресс всегда хранится и в браузере. Экспорт/импорт — запасной вариант (или для браузеров без автосохранения).</p>
+    <h3>Экспорт и импорт</h3>
+    <p class="small" id="ioMsg">Можно скачать отдельную копию прогресса или перенести старый файл. Для обычной синхронизации через Google экспорт и импорт не требуются.</p>
     <div class="row">
       <button class="btn" id="exportBtn">Экспорт progress.json</button>
       <label class="btn">Импорт progress.json<input type="file" id="importInput" accept=".json" hidden></label>

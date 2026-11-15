@@ -41,7 +41,6 @@ function renderFileUi(){
   const b = document.getElementById('fileBtn'), info = document.getElementById('fileInfo');
   const name = esc(fileHandle?.name || 'progress.json');
   const chip = {
-    none:  ['💾 Подключить файл прогресса', 'warn', 'Прогресс сейчас только в браузере — нажми, чтобы сохранять его в progress.json'],
     perm:  ['💾 Разрешить сохранение', 'warn', 'Браузер просит подтвердить доступ к файлу после перезапуска'],
     ok:    [`💾 ${name} ✓`, 'ok', lastWrite ? `Сохранено в ${fmtTime(lastWrite)}. Нажми, чтобы сохранить сейчас` : 'Файл подключён'],
     error: ['💾 Ошибка сохранения', 'err', fileErr],
@@ -49,13 +48,15 @@ function renderFileUi(){
   b.className = 'filechip' + (chip ? ' ' + chip[1] : ' hidden');
   if(chip){ b.textContent = chip[0]; b.title = chip[2]; }
   const texts = {
-    unsupported: 'Этот браузер не умеет писать в файлы напрямую — автосохранение работает в <b>Chrome</b> и <b>Edge</b>. Здесь используй экспорт вручную.',
-    none: 'Файл не подключён. Нажми «Выбрать / создать progress.json…» и сохрани его в папку колоды рядом с этой страницей — дальше прогресс будет писаться туда сам после каждого ответа. Если файл уже есть (старый экспорт), выбери «Подключить существующий» — прогресс из него сольётся с текущим.',
+    unsupported: 'Дополнительная запись в файл недоступна в этом браузере. Копию можно скачать через экспорт ниже. Подключение файла не требуется для сохранения в браузере или синхронизации через Google.',
+    none: 'Необязательно: можно создать резервный файл, который будет обновляться после каждого ответа. Существующий файл можно подключить для объединения с текущим прогрессом. Для синхронизации через Google файл не нужен.',
     perm: `Подключён <b>${name}</b>, но после перезапуска браузер просит подтвердить доступ. Это спросится при первом клике или нажатии клавиши (в Chrome можно выбрать «Разрешать всегда»).`,
     ok: `Прогресс автоматически сохраняется в <b>${name}</b>${lastWrite ? ` — последний раз в ${fmtTime(lastWrite)}` : ''}. При открытии страницы файл и браузер сливаются: по каждой карточке берётся более свежая запись.`,
     error: `Не получилось работать с файлом: ${esc(fileErr)}. Подключи файл заново.`,
   };
   info.innerHTML = texts[fileState] || '';
+  const panel = document.getElementById('fileBackup');
+  if (panel && (fileState === 'perm' || fileState === 'error')) panel.open = true;
   document.getElementById('fileNewBtn').classList.toggle('hidden', !FS_OK);
   document.getElementById('fileOpenBtn').classList.toggle('hidden', !FS_OK);
   document.getElementById('fileOffBtn').classList.toggle('hidden', !fileHandle);

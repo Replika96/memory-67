@@ -1,4 +1,4 @@
-const cacheName = 'memory-cards-shell-v6';
+const cacheName = 'memory-cards-shell-v7';
 const assets = ['./','./index.html','./library.css','./app.webmanifest','./register.js',
   './progress-storage.js','./sync-state.js','./cloud-sync.js','./autosave.js','./icon-192.png','./icon-512.png',
   './android/flashcards.html','./android/cards.js','./eng/flashcards.html','./eng/cards.js','./finance/flashcards.html','./finance/cards.js','./lesson5/flashcards.html','./lesson5/cards.js'];

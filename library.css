@@ -49,6 +49,10 @@
   .filechip.warn{color:var(--c-young);border-color:var(--c-young)}
   .filechip.err{color:var(--again);border-color:var(--again)}
 #cloudStatus { overflow-wrap: anywhere; }
+.file-backup { margin: 22px 0; border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.file-backup summary { cursor: pointer; font-size: 14px; color: var(--muted); }
+.file-backup #fileSection { padding-top: 12px; }
+.file-backup .filechip { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 @media (max-width: 600px) {
   body main { padding: 14px 12px 30px; }
   header .hdr-right { min-width: 0; }
