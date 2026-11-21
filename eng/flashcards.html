@@ -93,7 +93,7 @@
   <section id="tab-study">
     <div class="controls">
       Партия: <select id="batchSel"></select>
-      Направление: <select id="dirSel"><option value="en">EN → RU</option><option value="ru">RU → EN</option></select>
+      <label>Упражнения <select id="dirSel"><option value="mixed">Вперемешку</option><option value="ru">RU → EN</option><option value="en">EN → RU</option><option value="gap">Примеры с пропуском</option></select></label>
       Новых в день: <input type="number" id="newLimit" min="0" max="100" style="width:64px">
     </div>
     <div class="study-tools">
@@ -145,6 +145,7 @@
 
     <h3>Как это работает (как в Anki, алгоритм SM-2)</h3>
     <ul>
+      <li>У каждого направления и примера своё расписание. Прежнее общее расписание учтено в EN → RU. Дневной лимит общий для всех типов заданий.</li>
       <li><b>Новая карточка</b> проходит шаги изучения: <b>1 мин → 10 мин</b>, после чего «выпускается» на интервал <b>1 день</b>. «Легко» сразу выпускает на <b>4 дня</b>.</li>
       <li><b>Повторение:</b> «Хорошо» умножает интервал на ease карточки (старт 250%), «Трудно» — на 1.2 и снижает ease на 15%, «Легко» — на ease × 1.3 и повышает ease на 15%. Если повторяешь с опозданием и всё равно вспомнил — часть опоздания засчитывается в интервал.</li>
       <li><b>«Снова» на повторении</b> — это провал (lapse): ease −20% (не ниже 130%), интервал сбрасывается до 1 дня, карточка уходит на переучивание через 10 мин.</li>
@@ -197,7 +198,15 @@ document.addEventListener('click', event => {
 
 const SETTINGS_KEY = 'eng-flashcards-settings-v1';
 const STATS_KEY = 'eng-flashcards-stats-v1';
-const deck = (window.DECK || []).slice().sort((a,b) => a.id - b.id);
+const words = (window.DECK || []).slice().sort((a,b) => a.id - b.id);
+const exerciseNames = {ru:'RU → EN', en:'EN → RU', gap:'Пример с пропуском'};
+// Numeric keys retain the original shared schedule and stay compatible with older backups.
+const deck = words.flatMap(word => {
+  const base = {...word, wordId:word.id};
+  const exercises = [{...base, kind:'en'}, {...base, id:'ru-'+word.id, kind:'ru'}];
+  if(word.gap && word.ex.includes(word.gap)) exercises.push({...base, id:'gap-'+word.id, kind:'gap'});
+  return exercises;
+});
 const byId = Object.fromEntries(deck.map(c => [c.id, c]));
 
 const store = {
@@ -228,7 +237,7 @@ function migrate(old){
 
 let progress = store.get(KEY, null);
 if(!progress){ progress = migrate(store.get(KEY_V1, {})); store.set(KEY, progress); }
-let settings = Object.assign({ batch:'all', dir:'en', newLimit:10, newDay:{date:'', count:0} }, store.get(SETTINGS_KEY, {}));
+let settings = Object.assign({ batch:'all', exerciseMode:'mixed', newLimit:10, newDay:{date:'', count:0} }, store.get(SETTINGS_KEY, {}));
 let stats = store.get(STATS_KEY, {});   // 'YYYY-MM-DD' -> {reviews, again, new}
 const saveLocal = () => {
   const saved = progressStorage.write({[KEY]:progress, [SETTINGS_KEY]:settings, [STATS_KEY]:stats});
@@ -300,16 +309,17 @@ function statusOf(id){
 }
 const statusRu = { new:'Новое', learning:'Учу', young:'Повторяю', mature:'Изучено' };
 const inBatch = c => settings.batch === 'all' || String(c.batch) === String(settings.batch);
+const inMode = c => settings.exerciseMode === 'mixed' || c.kind === settings.exerciseMode;
 function newDoneToday(){ return settings.newDay.date === dayKey(Date.now()) ? settings.newDay.count : 0; }
 function newLeft(){ return Math.max(0, (Number(settings.newLimit) || 0) - newDoneToday()); }
 
 function queues(now = Date.now()){
-  const cards = deck.filter(inBatch);
+  const cards = deck.filter(c => inBatch(c) && inMode(c));
   const lrnAll = cards.filter(c => isLrn(progress[c.id])).sort((a,b) => progress[a.id].due - progress[b.id].due);
   const lrnNow = lrnAll.filter(c => progress[c.id].due <= now);
   const lrnAhead = lrnAll.filter(c => progress[c.id].due <= now + CFG.learnAheadMin*MIN);
   const rev = cards.filter(c => { const s = statusOf(c.id); return (s === 'young' || s === 'mature') && progress[c.id].due <= now; });
-  const fresh = cards.filter(c => statusOf(c.id) === 'new').slice(0, newLeft());
+  const fresh = newLeft() ? cards.filter(c => statusOf(c.id) === 'new') : [];
   return { lrnAll, lrnNow, lrnAhead, rev, fresh };
 }
 
@@ -325,10 +335,16 @@ function pickNext(){
     const alt = notLast(q.lrnNow); if(alt) return alt;
   }
   // 2) повторения и новые вперемешку
-  const nRev = q.rev.length, nNew = q.fresh.length;
+  const nRev = q.rev.length, nNew = Math.min(q.fresh.length, newLeft());
   if(nRev || nNew){
     const takeNew = nNew && (!nRev || Math.random() < nNew / (nNew + nRev));
-    if(takeNew) return notLast(q.fresh) || q.fresh[0];
+    if(takeNew){
+      const cycle = ['ru','en','gap','ru','en'];
+      const preferred = cycle[newDoneToday() % cycle.length];
+      const otherWords = q.fresh.filter(c => c.wordId !== byId[lastId]?.wordId);
+      const choices = otherWords.length ? otherWords : q.fresh;
+      return choices.find(c => c.kind === preferred) || choices[0];
+    }
     const pool = q.rev.filter(c => c.id !== lastId);
     const src = pool.length ? pool : q.rev;
     return src[Math.floor(Math.random() * src.length)];
@@ -377,7 +393,8 @@ function undo(){
     sessionDone = Math.max(0, sessionDone-1);
   }
   save(); renderStats();
-  current = byId[u.id]; flipped = false; lastId = null; renderStudy();
+  current = byId[u.id]; flipped = false; lastId = null;
+  if(current && inMode(current) && inBatch(current)) renderStudy(); else next();
 }
 
 // ================== форматирование ==================
@@ -392,11 +409,11 @@ function preview(id, rating){
 
 // ================== отрисовка ==================
 function renderStats(){
-  const cards = deck.filter(inBatch);
+  const cards = deck.filter(c => inBatch(c) && inMode(c));
   const c = { new:0, learning:0, young:0, mature:0 };
   cards.forEach(x => c[statusOf(x.id)]++);
   document.getElementById('stats').innerHTML =
-    `<div class="stat"><b>${cards.length}</b><span>всего слов</span></div>
+    `<div class="stat"><b>${cards.length}</b><span>всего заданий</span></div>
      <div class="stat"><b style="color:var(--c-mature)">${c.mature}</b><span>изучено (≥21 д)</span></div>
      <div class="stat"><b style="color:var(--c-young)">${c.young}</b><span>повторяю</span></div>
      <div class="stat"><b style="color:var(--c-lrn)">${c.learning}</b><span>учу</span></div>
@@ -416,7 +433,7 @@ function renderStudy(){
   const area = document.getElementById('studyArea');
   const q = queues();
   const cur = current ? (statusOf(current.id) === 'new' ? 'n' : isLrn(progress[current.id]) ? 'l' : 'r') : '';
-  const nN = q.fresh.length, nL = q.lrnAhead.length, nR = q.rev.length;
+  const nN = Math.min(q.fresh.length, newLeft()), nL = q.lrnAhead.length, nR = q.rev.length;
   const counts = `<div class="counts">
       <span style="color:var(--c-new)" class="${cur==='n'?'cur':''}" title="новые">${nN}</span>
       <span style="color:var(--c-lrn)" class="${cur==='l'?'cur':''}" title="на изучении">${nL}</span>
@@ -437,10 +454,14 @@ function renderStudy(){
   }
 
   const c = current, st = statusOf(c.id);
-  const front = settings.dir === 'en'
+  const front = c.kind === 'gap'
+    ? `<div class="word" style="font-size:26px">${esc(c.ex.replace(c.gap, '_____'))}</div><div class="exru">${esc(c.exRu)}</div>`
+    : c.kind === 'en'
     ? `<div class="word">${esc(c.en)}</div><div class="tr">${esc(c.tr)}</div>`
     : `<div class="word" style="font-size:30px">${esc(c.ru)}</div>`;
-  const back = settings.dir === 'en'
+  const back = c.kind === 'gap'
+    ? `<div class="ru">${esc(c.gap)}</div>`
+    : c.kind === 'en'
     ? `<div class="ru">${esc(c.ru)}</div>`
     : `<div class="ru">${esc(c.en)}</div><div class="tr">${esc(c.tr)}</div>`;
   const labels = ['Снова','Трудно','Хорошо','Легко'];
@@ -450,8 +471,8 @@ function renderStudy(){
 
   area.innerHTML = `${counts}
     <div class="card" id="card">
-      <span class="tag">${statusRu[st]}${progress[c.id]?.lapses ? ` · провалов: ${progress[c.id].lapses}` : ''}</span>
-      <button class="speak" id="speakBtn" title="Произнести (S)">🔊</button>
+      <span class="tag">${exerciseNames[c.kind]} · ${statusRu[st]}${progress[c.id]?.lapses ? ` · провалов: ${progress[c.id].lapses}` : ''}</span>
+      <button ${c.kind !== 'en' && !flipped ? 'hidden' : ''} class="speak" id="speakBtn" title="Произнести (S)">🔊</button>
       ${front}
       <div class="ans ${flipped ? '' : 'hidden'}">
         ${back}
@@ -461,7 +482,7 @@ function renderStudy(){
       </div>
     </div>
     ${buttons}
-    <div class="bookmark-row">${bookmarkButton(c.id)}</div>
+    <div class="bookmark-row">${bookmarkButton(c.wordId)}</div>
     <div class="sub">
       <button class="link" id="undoBtn" ${undoStack.length ? '' : 'disabled'}>↶ Отменить (Z)</button>
       <span>Пробел · 1–4 · S</span>
@@ -475,10 +496,10 @@ function renderStudy(){
   area.querySelectorAll('[data-r]').forEach(b => b.onclick = () => answer(Number(b.dataset.r)));
 }
 
-function flip(){ if(!current || flipped) return; flipped = true; renderStudy(); if(settings.dir === 'ru') speak(); }
+function flip(){ if(!current || flipped) return; flipped = true; renderStudy(); if(current.kind === 'ru') speak(); }
 function speak(){
-  if(!current || !window.speechSynthesis) return;
-  const u = new SpeechSynthesisUtterance(current.en); u.lang = 'en-GB'; u.rate = .9;
+  if(!current || !window.speechSynthesis || (!flipped && current.kind !== 'en')) return;
+  const u = new SpeechSynthesisUtterance(current.kind === 'gap' ? current.ex : current.en); u.lang = 'en-GB'; u.rate = .9;
   speechSynthesis.cancel(); speechSynthesis.speak(u);
 }
 
@@ -488,32 +509,33 @@ function renderList(){
   const now = Date.now();
   const when = p => { if(isLrn(p)) return p.due <= now ? 'сейчас' : `через ${fmtMs(p.due - now)}`;
                       const d = Math.round((p.due - startOfDay(now)) / DAY); return d <= 0 ? 'сегодня' : d === 1 ? 'завтра' : `через ${fmtDays(d)}`; };
-  const rows = deck.filter(c => f === 'bookmarked' || inBatch(c))
-    .filter(c => f === 'bookmarked' ? !!window.cardBookmarks[c.id] : !f || statusOf(c.id) === f)
+  const rows = deck.filter(c => inMode(c) && (f === 'bookmarked' || inBatch(c)))
+    .filter(c => f === 'bookmarked' ? !!window.cardBookmarks[c.wordId] : !f || statusOf(c.id) === f)
     .filter(c => !q || c.en.toLowerCase().includes(q) || c.ru.toLowerCase().includes(q))
     .map(c => { const st = statusOf(c.id), p = progress[c.id];
-      return `<tr><td><b>${esc(c.en)}</b><br><span class="muted">${esc(c.tr)}</span></td>
+      return `<tr><td><b>${esc(c.en)}</b><br><span class="muted">${exerciseNames[c.kind]}</span><br><span class="muted">${esc(c.tr)}</span></td>
         <td>${esc(c.ru)}</td><td><span class="pill p-${st}">${statusRu[st]}</span></td>
         <td>${st === 'new' ? '—' : `${isLrn(p) ? 'шаги' : fmtDays(p.ivl)} · ${Math.round(p.ease*100)}%`}</td>
         <td>${st === 'new' ? '—' : when(p)}</td>
-        <td>${bookmarkButton(c.id)} ${st === 'new' ? `<button class="link" data-known="${c.id}">знаю</button>` : `<button class="link" data-reset="${c.id}">сбросить</button>`}</td></tr>`; });
+        <td>${bookmarkButton(c.wordId)} ${st === 'new' ? `<button class="link" data-known="${c.id}">знаю</button>` : `<button class="link" data-reset="${c.id}">сбросить</button>`}</td></tr>`; });
   document.getElementById('listBody').innerHTML = rows.join('') || '<tr><td colspan="6" class="muted">Ничего не найдено</td></tr>';
   document.querySelectorAll('[data-reset]').forEach(b => b.onclick = () => { delete progress[b.dataset.reset]; save(); renderStats(); renderList(); if(!current) next(); });
   document.querySelectorAll('[data-known]').forEach(b => b.onclick = () => {
-    const id = Number(b.dataset.known); markKnown(id); renderList(); if(current && current.id === id) next(); });
+    const id = byId[b.dataset.known].id; markKnown(id); renderList(); if(current && current.id === id) next(); });
 }
 
 // ================== экспорт / импорт ==================
 function buildExport(){
+  const label = c => c.en + ' · ' + exerciseNames[c.kind];
   const summary = { new:0, learning:0, young:0, mature:0 };
   deck.forEach(c => summary[statusOf(c.id)]++);
   return {
-    resetAt: settings.resetAt || 0, format: 'sm2-v2', exportedAt: new Date().toISOString(), totalCards: deck.length, summary,
-    mature: deck.filter(c => statusOf(c.id) === 'mature').map(c => c.en),
-    young: deck.filter(c => statusOf(c.id) === 'young').map(c => c.en),
-    learning: deck.filter(c => statusOf(c.id) === 'learning').map(c => c.en),
+    resetAt: settings.resetAt || 0, format: 'sm2-v2', exportedAt: new Date().toISOString(), totalCards: deck.length, totalWords: words.length, summary,
+    mature: deck.filter(c => statusOf(c.id) === 'mature').map(label),
+    young: deck.filter(c => statusOf(c.id) === 'young').map(label),
+    learning: deck.filter(c => statusOf(c.id) === 'learning').map(label),
     hardest: deck.filter(c => progress[c.id]?.lapses).sort((a,b) => progress[b.id].lapses - progress[a.id].lapses).slice(0, 15)
-                 .map(c => ({ en: c.en, lapses: progress[c.id].lapses, ease: progress[c.id].ease })),
+                 .map(c => ({ en: label(c), lapses: progress[c.id].lapses, ease: progress[c.id].ease })),
     progress, stats,
   };
 }
@@ -550,10 +572,10 @@ document.getElementById('resetBtn').onclick = e => {
 const batches = [...new Set(deck.map(c => c.batch))].sort((a,b) => a - b);
 document.getElementById('batchSel').innerHTML = '<option value="all">Все</option>' + batches.map(b => `<option value="${b}">Партия ${b}</option>`).join('');
 document.getElementById('batchSel').value = settings.batch;
-document.getElementById('dirSel').value = settings.dir;
+document.getElementById('dirSel').value = settings.exerciseMode;
 document.getElementById('newLimit').value = settings.newLimit;
 document.getElementById('batchSel').onchange = e => { settings.batch = e.target.value; save(); renderStats(); renderList(); next(); };
-document.getElementById('dirSel').onchange = e => { settings.dir = e.target.value; save(); renderStudy(); };
+document.getElementById('dirSel').onchange = e => { settings.exerciseMode = e.target.value; save(); renderStats(); renderList(); next(); };
 document.getElementById('newLimit').onchange = e => { settings.newLimit = Math.max(0, Number(e.target.value) || 0); save(); renderStats(); if(!current) next(); else renderStudy(); };
 document.getElementById('search').oninput = renderList;
 document.getElementById('statusFilter').onchange = renderList;
