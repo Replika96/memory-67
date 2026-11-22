@@ -151,7 +151,7 @@
       <li><b>«Снова» на повторении</b> — это провал (lapse): ease −20% (не ниже 130%), интервал сбрасывается до 1 дня, карточка уходит на переучивание через 10 мин.</li>
       <li>Интервалы немного случайно «размазываются» (±5%), чтобы карточки не приходили пачками. День начинается в 4:00, как в Anki.</li>
       <li><b>Статусы:</b> Новое → Учу (шаги в минутах) → Повторяю (интервал &lt; 21 дня) → <b>Изучено</b> (интервал ≥ 21 дня, в Anki это «mature»).</li>
-      <li>«Уже знаю» — для слов, которые ты точно знаешь: карточка сразу уходит на 60 дней и не тратит лимит новых.</li>
+      <li>«Уже знаю» назначает повторение через 60 дней. Первое знакомство с заданием, включая отметку «Уже знаю», занимает одно место в дневном лимите новых.</li>
       <li>Клавиши: Пробел — показать ответ / «Хорошо», 1–4 — оценки, Z — отменить последний ответ, S — озвучить.</li>
     </ul>
   </section>
@@ -327,15 +327,12 @@ let current = null, flipped = false, lastId = null, undoStack = [], sessionDone 
 
 function pickNext(){
   const q = queues();
-  const notLast = arr => arr.find(c => c.id !== lastId);
   // 1) карточки на шагах изучения, срок которых наступил
-  if(q.lrnNow.length){
-    const c = q.lrnNow[0];
-    if(c.id !== lastId || (!q.rev.length && !q.fresh.length)) return c;
-    const alt = notLast(q.lrnNow); if(alt) return alt;
-  }
+  const due = q.lrnNow.find(c => c.id !== lastId);
+  if(due) return due;
   // 2) повторения и новые вперемешку
-  const nRev = q.rev.length, nNew = Math.min(q.fresh.length, newLeft());
+  const reviews = q.rev.filter(c => c.id !== lastId);
+  const nRev = reviews.length, nNew = Math.min(q.fresh.length, newLeft());
   if(nRev || nNew){
     const takeNew = nNew && (!nRev || Math.random() < nNew / (nNew + nRev));
     if(takeNew){
@@ -345,16 +342,21 @@ function pickNext(){
       const choices = otherWords.length ? otherWords : q.fresh;
       return choices.find(c => c.kind === preferred) || choices[0];
     }
-    const pool = q.rev.filter(c => c.id !== lastId);
-    const src = pool.length ? pool : q.rev;
-    return src[Math.floor(Math.random() * src.length)];
+    return reviews[Math.floor(Math.random() * nRev)];
   }
   // 3) если больше ничего нет — учим наперёд (до 20 мин)
-  if(q.lrnAhead.length) return q.lrnAhead[0];
-  return null;
+  const early = q.lrnAhead.filter(c => c.id !== lastId)
+    .sort((a,b) => (progress[a.id].last || 0) - (progress[b.id].last || 0));
+  return early[0] || q.lrnNow[0] || q.rev[0] || null;
 }
 
 function next(){ current = pickNext(); flipped = false; renderStudy(); }
+
+function countNewToday(day){
+  if(settings.newDay.date !== day) settings.newDay = {date:day, count:0};
+  settings.newDay.count++;
+  stats[day].new = (stats[day].new || 0) + 1;
+}
 
 function answer(rating){
   if(!current || !flipped) return;
@@ -362,12 +364,10 @@ function answer(rating){
   const wasNew = statusOf(id) === 'new';
   progress[id] = schedule(before, rating, now, true);
   const dk = dayKey(now);
-  if(wasNew){
-    if(settings.newDay.date !== dk) settings.newDay = { date: dk, count: 0 };
-    settings.newDay.count++;
-  }
   const st = stats[dk] || (stats[dk] = { reviews:0, again:0, new:0 });
-  st.reviews++; if(rating === 1) st.again++; if(wasNew) st.new++;
+  st.reviews = (st.reviews || 0) + 1;
+  if(rating === 1) st.again = (st.again || 0) + 1;
+  if(wasNew) countNewToday(dk);
   undoStack.push({ id, before, wasNew, dk, rating });
   if(undoStack.length > 30) undoStack.shift();
   lastId = id; sessionDone++;
@@ -376,10 +376,15 @@ function answer(rating){
 
 function markKnown(id){
   const now = Date.now(), before = progress[id] ? { ...progress[id] } : undefined;
+  const wasNew = statusOf(id) === 'new', dk = dayKey(now);
+  if(wasNew){
+    stats[dk] ||= {reviews:0, again:0, new:0};
+    countNewToday(dk);
+  }
   const ivl = CFG.knownIvl;
   progress[id] = { ...(before || {}), state:'review', step:0, ease: Math.max(before?.ease || CFG.startEase, CFG.startEase), ivl,
                    due: startOfDay(now) + ivl*DAY, reps: (before?.reps || 0) + 1, lapses: before?.lapses || 0, last: now };
-  undoStack.push({ id, before, wasNew:false, dk:null, rating:0 });
+  undoStack.push({ id, before, wasNew, dk, rating:0 });
   lastId = id; save(); renderStats();
 }
 
@@ -388,9 +393,9 @@ function undo(){
   if(u.before) progress[u.id] = u.before; else delete progress[u.id];
   if(u.dk){
     const st = stats[u.dk];
-    if(st){ st.reviews = Math.max(0, st.reviews-1); if(u.rating === 1) st.again = Math.max(0, st.again-1); if(u.wasNew) st.new = Math.max(0, st.new-1); }
+    if(st){ if(u.rating) st.reviews = Math.max(0, st.reviews-1); if(u.rating === 1) st.again = Math.max(0, st.again-1); if(u.wasNew) st.new = Math.max(0, st.new-1); }
     if(u.wasNew && settings.newDay.date === u.dk) settings.newDay.count = Math.max(0, settings.newDay.count-1);
-    sessionDone = Math.max(0, sessionDone-1);
+    if(u.rating) sessionDone = Math.max(0, sessionDone-1);
   }
   save(); renderStats();
   current = byId[u.id]; flipped = false; lastId = null;
@@ -422,9 +427,9 @@ function renderStats(){
   document.getElementById('bar').innerHTML =
     `<i style="width:${c.mature/t*100}%;background:var(--c-mature)"></i><i style="width:${c.young/t*100}%;background:var(--c-young)"></i><i style="width:${c.learning/t*100}%;background:var(--c-lrn)"></i>`;
   const st = stats[dayKey(Date.now())] || { reviews:0, again:0 };
-  const acc = st.reviews ? Math.round((1 - st.again/st.reviews) * 100) : null;
+  const acc = st.reviews ? Math.round((1 - (st.again || 0)/st.reviews) * 100) : null;
   document.getElementById('today').textContent =
-    `Сегодня: ${st.reviews} ответов${acc !== null ? ` · верно ${acc}%` : ''} · новых ${newDoneToday()} из ${settings.newLimit}`;
+    `Сегодня: ${st.reviews || 0} ответов${acc !== null ? ` · верно ${acc}%` : ''} · новых ${newDoneToday()} из ${settings.newLimit}`;
 }
 
 let waitTimer = null;
@@ -435,15 +440,16 @@ function renderStudy(){
   const cur = current ? (statusOf(current.id) === 'new' ? 'n' : isLrn(progress[current.id]) ? 'l' : 'r') : '';
   const nN = Math.min(q.fresh.length, newLeft()), nL = q.lrnAhead.length, nR = q.rev.length;
   const counts = `<div class="counts">
-      <span style="color:var(--c-new)" class="${cur==='n'?'cur':''}" title="новые">${nN}</span>
+      <span style="color:var(--c-new)" class="${cur==='n'?'cur':''}" title="Новые задания в пределах дневного лимита">Новых · ${nN}</span>
       <span style="color:var(--c-lrn)" class="${cur==='l'?'cur':''}" title="на изучении">${nL}</span>
       <span style="color:var(--c-rev)" class="${cur==='r'?'cur':''}" title="к повторению">${nR}</span></div>`;
 
   if(!current){
     const nextLrn = q.lrnAll[0];
-    const waitMs = nextLrn ? progress[nextLrn.id].due - CFG.learnAheadMin*MIN - Date.now() : null;
+    const waitMs = q.lrnAll.length ? Math.min(...q.lrnAll.map(c =>
+      progress[c.id].due - (c.id === lastId ? 0 : CFG.learnAheadMin*MIN))) - Date.now() : null;
     area.innerHTML = `${counts}<div class="card done">
-      <div class="word" style="font-size:28px">${sessionDone ? 'На сегодня всё 🎉' : 'Сейчас нечего повторять'}</div>
+      <div class="word" style="font-size:28px">${nextLrn ? 'Пауза до повторения' : sessionDone ? 'На сегодня всё 🎉' : 'Сейчас нечего повторять'}</div>
       <p class="small">${nextLrn ? `Следующая карточка на изучении — через ${fmtMs(progress[nextLrn.id].due - Date.now())}.` : 'Повторения придут по расписанию.'}
       ${newDoneToday() >= settings.newLimit ? '<br>Лимит новых на сегодня исчерпан — его можно поднять сверху.' : ''}</p>
       <div class="row" style="justify-content:center">${undoStack.length ? '<button class="btn" id="undoBtn">Отменить последний ответ</button>' : ''}</div></div>`;
@@ -521,7 +527,8 @@ function renderList(){
   document.getElementById('listBody').innerHTML = rows.join('') || '<tr><td colspan="6" class="muted">Ничего не найдено</td></tr>';
   document.querySelectorAll('[data-reset]').forEach(b => b.onclick = () => { delete progress[b.dataset.reset]; save(); renderStats(); renderList(); if(!current) next(); });
   document.querySelectorAll('[data-known]').forEach(b => b.onclick = () => {
-    const id = byId[b.dataset.known].id; markKnown(id); renderList(); if(current && current.id === id) next(); });
+    const id = byId[b.dataset.known].id; markKnown(id); renderList();
+    if(!current || current.id === id || (statusOf(current.id) === 'new' && !newLeft())) next(); else renderStudy(); });
 }
 
 // ================== экспорт / импорт ==================
